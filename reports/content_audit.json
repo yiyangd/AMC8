@@ -1,7 +1,7 @@
 {
   "schemaVersion": "amc8-content-audit-v1",
   "passed": true,
-  "generatedAt": "2026-10-27T01:14:29.745Z",
+  "generatedAt": "2026-10-27T23:13:08.547Z",
   "basePath": "/AMC8",
   "stats": {
     "selfTests": 6,
@@ -48,7 +48,7 @@
     "htmlPages": 63,
     "renderedQuestionAnchors": 650,
     "builtQuestionImages": 650,
-    "dataSha256": "83ee610e54191c6d185c2101e143d24d6dec1b57bcee0c34c5454f488119746a"
+    "dataSha256": "1b8a642d73044fd19671f50fd66555fd8fc53f6a296a04ef6e484b4047ff2bf3"
   },
   "errorCount": 0,
   "warningCount": 0,

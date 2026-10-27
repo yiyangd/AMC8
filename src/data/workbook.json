@@ -45,7 +45,7 @@
       "C": 130
     },
     "taxonomyVersion": "2026-09-20.v1",
-    "sourceWorkbook": "AMC8_2000-2026_Topic-Based_Practice_Workbook_STEMHUB.pdf",
+    "sourceWorkbook": "STEMHUB_AMC8_Workbook.pdf",
     "sourceWorkbookSha256": "1ed36119a14eff31a974d1901ea5e3d2c703a919739e7375d3fdd1d6f4dbaded",
     "workbookManifestSha256": "c6ad691cdc207f4149e89f23a211618e3afdd3a517622e7602a0998589365504",
     "auditSha256": "2673baba3c4839e96aaee1d19f79eea83e7747848d8fb58454c87d5245ad8d35",
@@ -2409,8 +2409,8 @@
         "choice": "E",
         "value": "24",
         "steps": [
-          "The recipe uses 3 portions of sugar, each containing 2 cups, so the sugar amount is 3×2=6 cups.",
-          "Water is four times the sugar amount. Therefore the required water is 6×4=24 cups."
+          "Sugar is twice the amount of lemon juice. With 3 cups of lemon juice, Luka needs 2×3=6 cups of sugar.",
+          "Water is four times the sugar amount. Therefore he needs 4×6=24 cups of water."
         ]
       }
     },
@@ -2962,8 +2962,8 @@
         "choice": "D",
         "value": "75%",
         "steps": [
-          "The total mass is 120 grams, of which 30 grams is filling. The part that is not filling has mass 120−30=90 grams.",
-          "Its fraction of the total is 90/120=3/4. Converting this fraction to a percentage gives 75%."
+          "The burger weighs 120 grams, including 30 grams of filler. The mass that is not filler is 120−30=90 grams.",
+          "Its fraction of the whole burger is 90/120=3/4, which is 75%."
         ]
       }
     },
@@ -4327,9 +4327,9 @@
         "choice": "C",
         "value": "3",
         "steps": [
-          "The price per ounce is total price divided by weight, so on the graph it is y/x for a point (x,y).",
-          "Compare the lowest-priced point at each weight. The relevant ratios include 2/2=1, 2.5/3=5/6, 3.9/4=0.975, and 4.5/5=0.9.",
-          "The smallest is 5/6≈0.833 at the 3-ounce size. Higher-priced points at the same weight cannot improve that ratio, so 3 ounces gives the lowest unit price."
+          "For a plotted point (weight,price)=(x,y), the unit price is y/x. This is the slope of the line joining the point to the origin.",
+          "Draw a ray from the origin through the lowest 3-ounce point, approximately (3,2.5). Every other plotted point lies above this ray, so every other price/weight ratio is larger.",
+          "For example, this ratio is 2.5/3≈0.833, below 2/2=1, 3.9/4≈0.975, and 4.5/5=0.9. The lowest unit price therefore occurs at 3 ounces."
         ]
       }
     },
@@ -4735,9 +4735,9 @@
         "choice": "D",
         "value": "4",
         "steps": [
-          "The absolute-value condition means the expression inside the absolute value can equal either 4 or -4. Thus solve x^{2}-5=4 and x^{2}-5=-4.",
+          "If a real number has square 16, that number is either 4 or -4. Apply this to x^{2}-5: x^{2}-5=4 or x^{2}-5=-4.",
           "The first equation gives x^{2}=9, so x=3 or -3. The second gives x^{2}=1, so x=1 or -1.",
-          "These four real values are distinct and all satisfy the original condition. Therefore the number of real solutions is 4."
+          "The four distinct values -3,-1,1,3 all satisfy the original equation. Therefore there are 4 real solutions."
         ]
       }
     },
@@ -4783,10 +4783,10 @@
         "choice": "B",
         "value": "28",
         "steps": [
-          "Let g be the number of girls. There are g+2 boys, and the stated square-sum condition becomes g^{2}+(g+2)^{2} = 394.",
-          "Expand and simplify: 2g^{2}+4g+4 = 394, so g^{2}+2g = 195.",
-          "Complete the square by adding 1 to both sides: (g+1)^{2} = 196 = 14^{2}. Because the student counts are positive, g+1 = 14 rather than −14.",
-          "Hence g = 13 and the number of boys is 15. Their combined count is 13+15 = 28. The check 13^{2}+15^{2} = 169+225 = 394 confirms the result."
+          "Let g be the number of girls, so there are g+2 boys. Each girl receives g jelly beans and each boy receives g+2, giving g^{2}+(g+2)^{2} = 400−6 = 394.",
+          "Expand and divide by 2: g^{2}+2g = 195. Adding 1 to both sides gives (g+1)^{2} = 196 = 14^{2}.",
+          "Positive student counts require g+1 = 14, so g = 13 and there are 15 boys. Altogether there are 13+15 = 28 students.",
+          "Check: 13^{2}+15^{2} = 169+225 = 394 jelly beans, leaving the stated 6 from 400."
         ]
       }
     },
@@ -4808,10 +4808,10 @@
         "choice": "E",
         "value": "24",
         "steps": [
-          "Write the original green and yellow counts as 3k and k, using their ratio 3:1. Moving two from yellow to green changes the counts to 3k+2 and k-2.",
-          "The new ratio is 4:1, so (3k+2)/(k-2)=4. Multiplying by k-2 gives 3k+2=4k-8. The same two objects leave one color and enter the other, so the total is preserved while their difference increases by four.",
-          "Thus k=10. The original counts are 30 and 10, and the new counts are 32 and 8.",
-          "Their difference is 32-8=24. Both new counts are positive, and 32:8=4:1, checking the conditions."
+          "Write the original green and yellow counts as 3k and k. Three green frogs become yellow, while five yellow frogs become green.",
+          "The new counts are 3k-3+5=3k+2 and k+3-5=k-2. Their ratio gives (3k+2)/(k-2)=4.",
+          "Thus 3k+2=4k-8, so k=10. The new counts are 32 green and 8 yellow.",
+          "Their difference is 32-8=24. The total remains 40 and the new ratio 32:8=4:1, checking both conditions."
         ]
       }
     },
@@ -5255,10 +5255,9 @@
         "choice": "D",
         "value": "32",
         "steps": [
-          "The five daily amounts form an arithmetic sequence. In any five-term arithmetic sequence, the middle term equals the mean of all five terms.",
-          "Their total is 100, so the third day's amount is 100÷5=20.",
-          "The fifth day is two equal steps after the third. The stated difference between those days is 12, so add 12 to the middle amount.",
-          "The fifth day's amount is 20+12=32. Equivalently, each daily step is 6, yielding the sequence 8, 14, 20, 26, 32."
+          "The five daily amounts form an arithmetic sequence with common difference 6. The first and fifth amounts balance around the third, as do the second and fourth, so the third equals the overall mean.",
+          "The third-day amount is 100÷5=20. Two daily increases of 6 lead to May 5: 20+2×6=32 bananas.",
+          "Check the five amounts: 8, 14, 20, 26, 32. They sum to 100 and increase by 6 each day."
         ]
       }
     },
@@ -6569,9 +6568,9 @@
         "choice": "D",
         "value": "8",
         "steps": [
-          "Each row and column must sum to 12. Expressing the three other missing entries in terms of x gives 14-x, x-1, and 4-x.",
-          "For x to exceed every other missing entry, it must in particular satisfy x>14-x. This becomes 2x>14, so x>7. The other comparisons give weaker restrictions.",
-          "The smallest integer candidate is x=8. The remaining missing values are then 6,7,-4, all below 8, so this candidate works."
+          "The complete top row sums to -2+9+5=12, so every row and column must sum to 12.",
+          "The middle-left entry is 12-(-2)-x=14-x. The bottom-middle entry is 12-8-x=4-x. The center entry is 12-(-1)-(14-x)=x-1.",
+          "Require x to exceed these three entries. The conditions are x>7, x>2, and x>x-1. Thus the smallest integer is x=8; the other entries are 6,-4,7, all smaller."
         ]
       }
     },
@@ -6688,10 +6687,9 @@
         "choice": "C",
         "value": "72°",
         "steps": [
-          "The large isosceles triangle has vertex angle 36°. Its two equal base angles are therefore (180°−36°)÷2=72°.",
-          "In triangle CTR, the angle at T is 36°, while the angle at C is one of these 72° base angles.",
-          "Use the angle sum of a triangle: ∠CRT=180°−72°−36°=72°.",
-          "The requested angle is consequently 72°, rather than 36°; the equal base angles must be identified before using the smaller triangle."
+          "In triangle CAT, the equal angles at C and T are each (180°−36°)÷2=72°.",
+          "TR bisects the 72° angle at T, so ∠CTR=36°. Since R lies on AC, ∠TCR=72°.",
+          "Triangle CTR has angle sum 180°, giving ∠CRT=180°−72°−36°=72°."
         ]
       }
     },
@@ -6977,8 +6975,9 @@
         "choice": "D",
         "value": "R, P, S, Q",
         "steps": [
-          "R replaces a circular arc of P with its chord, so R<P. After canceling the common semicircular portions, S has diagonals longer than the corresponding vertical segments of P, so P<S.",
-          "Each corresponding bent path in Q is longer than the straight segment in S, by the triangle inequality. Hence R<P<S<Q."
+          "R replaces the curved ends of P with inscribed straight chords, so R<P.",
+          "P and S have the same curved ends. Each long diagonal of S is longer than the corresponding vertical side of P, so P<S.",
+          "Split each long diagonal of S in half. Each half has the same vertical span as one of Q's four diagonals but only half its horizontal span. Thus every Q diagonal is longer than that half, giving S<Q. The order is R,P,S,Q."
         ]
       }
     },
@@ -7175,10 +7174,10 @@
         "choice": "A",
         "value": "651",
         "steps": [
-          "Let a,b,c be the side lengths of the three squares, with b the middle size sought. The horizontal span in the diagram gives a+b+c=3322.",
-          "The vertical span gives a+c-b=2020, because the middle square's side is subtracted from the other two contributions.",
-          "Subtracting the second equation from the first eliminates a and c: (a+b+c)-(a+c-b)=3322-2020. The middle side contributes with opposite signs in these two equations, so subtracting is precisely what isolates twice that length.",
-          "Thus 2b=1302 and b=651. The two measured spans determine b without requiring the individual values of a or c."
+          "Let a,b,c be the side lengths of squares S1,S2,S3, respectively. Across the large rectangle, their widths give a+b+c=3322.",
+          "The bottom of S1 aligns with the bottom of S2. Therefore the height of R2 above S2 is a-b. Adding the height c of S3 gives a-b+c=2020.",
+          "Subtract the height equation from the width equation: (a+b+c)-(a-b+c)=3322-2020.",
+          "Thus 2b=1302, so the requested side length of S2 is b=651."
         ]
       }
     },
@@ -7658,10 +7657,10 @@
         "choice": "B",
         "value": "108",
         "steps": [
-          "Because AB is parallel to CE and AB:CE=2:1, the triangles meeting at F are similar. This gives BF:FE=2:1 and places F one third of a square side above CD.",
-          "Using that height and the given half-side base, triangle CEF has area 1/12 of the entire square. Explicitly, if the square side is L, this area is (1/2)(L/2)(L/3)=L^{2}/12.",
-          "Quadrilateral AFED occupies half of the square minus triangle CEF. Its area fraction is therefore 1/2-1/12=5/12.",
-          "Since AFED has area 45, the full square area is 45÷(5/12)=45×12/5=108."
+          "Let the square side be L. Since AB is parallel to CE, triangles ABF and CEF are similar. AB:CE=2:1, so BF:FE=2:1.",
+          "Thus FE is one third of BE. The perpendicular height above CD changes from 0 at E to L at B, so F is L/3 above CD.",
+          "Triangle CEF has area (1/2)(L/2)(L/3)=L^{2}/12. Removing it from triangle ACD gives area AFED=L^{2}/2-L^{2}/12=5L^{2}/12.",
+          "Therefore 5L^{2}/12=45, giving square area L^{2}=45×12/5=108."
         ]
       }
     },
@@ -7706,8 +7705,9 @@
         "choice": "A",
         "value": "Art",
         "steps": [
-          "The four single-cookie areas are 12, 8, 6, and 6 square units. Equal dough volume and equal thickness mean equal total cookie area.",
-          "Thus larger individual cookies produce fewer cookies from the same dough. Art's cookie has the largest area, 12, so Art makes the fewest cookies."
+          "All batches use equal dough amounts and have equal thickness, so they have equal total area. The largest individual cookie gives the fewest cookies.",
+          "Art's trapezoid has area (3+5)×3÷2=12. Roger's rectangle has area 4×2=8; Paul's parallelogram has area 3×2=6; Trisha's triangle has area 3×4÷2=6.",
+          "The largest area is 12, so Art gets the fewest cookies."
         ]
       }
     },
@@ -7729,8 +7729,8 @@
         "choice": "B",
         "value": "4.5",
         "steps": [
-          "ABED is a rectangle, so DE=AB=3 and BE=AD=3. The remaining segment is EC=6−3=3.",
-          "Triangle DEC has perpendicular base and height both equal to 3. Its area is 3×3÷2=4.5, which is choice B."
+          "ABED is a rectangle, so DE=AB=3 and BE=AD=3. Since DC=6, EC=6−3=3.",
+          "BE is perpendicular to EC. Therefore triangle BEC has area BE×EC÷2=3×3÷2=4.5 square units."
         ]
       }
     },
@@ -7798,8 +7798,8 @@
         "choice": "D",
         "value": "182",
         "steps": [
-          "The squares occur in equal pairs with side lengths 1 through 6. Their areas are the squares of those side lengths.",
-          "Add one set of areas, then double: 2×(1+4+9+16+25+36) = 2×91 = 182 square units."
+          "Each rectangle has width 2, so its area is twice its length. Add the six areas by factoring out this common width.",
+          "The sum is 2×(1+4+9+16+25+36) = 2×91 = 182 square units."
         ]
       }
     },
@@ -7867,10 +7867,9 @@
         "choice": "C",
         "value": "400",
         "steps": [
-          "The given relationship between area and length gives the rectangle's length as 1000÷25=40 meters.",
-          "The perimeter condition gives perimeter 1000÷10=100 meters. Since a rectangle has perimeter 2(length+width), its length plus width is 50 meters.",
-          "The width is therefore 50−40=10 meters.",
-          "Multiply length by width: area=40×10=400 square meters. These dimensions also reproduce the perimeter 2(40+10)=100, checking the calculation."
+          "Walking the length 25 times covers 1000 meters, so length=1000÷25=40 meters.",
+          "Ten laps of the perimeter also cover 1000 meters, so perimeter=100 meters. Thus length+width=100÷2=50 meters.",
+          "The width is 50−40=10 meters, and the area is 40×10=400 square meters. Check: 2(40+10)=100 meters."
         ]
       }
     },
@@ -7941,8 +7940,8 @@
         "choice": "A",
         "value": "7",
         "steps": [
-          "Find the shaded area by subtracting the smaller square from the larger square. Their side lengths are 3 and 4.",
-          "The larger area is 4^{2}=16 and the smaller area is 3^{2}=9. Their difference is 16−9=7 square units."
+          "The shaded L lies in a square at the lower-left corner whose side is 1+3=4. The unshaded central square has side 3.",
+          "Subtract the central square from that 4-by-4 square: shaded area=4^{2}−3^{2}=16−9=7 square units."
         ]
       }
     },
@@ -7964,8 +7963,8 @@
         "choice": "C",
         "value": "5",
         "steps": [
-          "The outer square has area 16 and the small excluded square has area 1, leaving 16−1=15 for the three trapezoids.",
-          "The trapezoids are congruent, so they have equal areas. Each has area 15÷3=5, which is choice C."
+          "The outer equilateral triangle has area 16, and the inner equilateral triangle has area 1. The three trapezoids fill the difference, with total area 16−1=15.",
+          "Congruent trapezoids have equal areas, so one trapezoid has area 15÷3=5."
         ]
       }
     },
@@ -8246,10 +8245,10 @@
         "choice": "C",
         "value": "22.5",
         "steps": [
-          "Enclose the figure in a 10 by 10 rectangle of area 100, and subtract the regions outside the target.",
-          "The upper-left part can be split vertically into a trapezoid of width 3 with parallel sides 5 and 6, area 3(5+6)/2=16.5.",
-          "Beside it is a triangle with base 7 and height 6, area 21. The two other outside triangles have areas 30 and 10.",
-          "Thus the target area is 100−16.5−21−30−10=22.5."
+          "Use one grid spacing as one unit. Enclose the quadrilateral in a 10-by-10 square of area 100.",
+          "Above its two upper edges, split the outside region vertically through the inward vertex: a trapezoid has width 3 and vertical sides 5 and 6, so its area is 3(5+6)÷2=16.5; the adjacent triangle has area 7×6÷2=21.",
+          "The lower-left and lower-right outside triangles have areas 4×5÷2=10 and 6×10÷2=30.",
+          "Subtract all four outside pieces: required area=100−16.5−21−10−30=22.5 square units."
         ]
       }
     },
@@ -8321,9 +8320,9 @@
         "choice": "D",
         "value": "2/3",
         "steps": [
-          "The full region has area 10, so the lower half must have area 5. The unit square on the right contributes area 1.",
-          "The remaining triangular part must therefore have area 5−1 = 4. Its base is 5, so its height h satisfies 5h/2 = 4, giving h = 8/5.",
-          "The marked lengths are QY = h−1 = 3/5 and XQ = 2−h = 2/5. Their ratio is XQ/QY = (2/5)/(3/5) = 2/3."
+          "The octagon has area 10, so the portion below PQ has area 5. Remove its rightmost unit square: the remaining triangle has area 4 and base 5.",
+          "Let h be Q's vertical height above the bottom row through P. The triangle area gives 5h/2 = 4, so h = 8/5.",
+          "Y is 1 unit above the bottom row and X is 2 units above it. Thus QY = h−1 = 3/5 and XQ = 2−h = 2/5, giving XQ/QY = 2/3."
         ]
       }
     },
@@ -8441,11 +8440,9 @@
         "choice": "B",
         "value": "27",
         "steps": [
-          "Compare the three right triangles outside the target region with the surrounding rectangle. Their base and height fractions determine their area fractions.",
-          "Using area=base×height÷2, the three outside pieces occupy 1/4, 1/4, and 1/8 of the rectangle respectively.",
-          "Their combined fraction is 1/4+1/4+1/8=5/8. Thus the central target region occupies the remaining 1−5/8=3/8.",
-          "The rectangle's area is 72 square units, so the requested area is 72×3/8=27.",
-          "This subtraction method uses all the complementary pieces exactly once. It also shows that the answer depends on area fractions, so calculating the lengths of the target region's slanted sides is unnecessary."
+          "Let the rectangle sides be 2a and 2b. Its area is 4ab=72, so ab=18. The midpoints divide the corresponding sides into lengths a and b.",
+          "Outside the desired triangle are three right triangles. Two have areas (2a)b÷2=ab and (2b)a÷2=ab; the third has area ab÷2.",
+          "Their total area is ab+ab+ab/2=(5/2)×18=45. Subtract from the rectangle: desired area=72−45=27 square units."
         ]
       }
     },
@@ -8493,11 +8490,10 @@
         "choice": "C",
         "value": "7.6",
         "steps": [
-          "The enclosing rectangle has area 10×8=80. The four triangles outside the parallelogram have areas 6, 15, 6, and 15.",
-          "Their combined area is 42, so the parallelogram has area 80−42=38.",
-          "Side HE is the hypotenuse of a right triangle with legs 3 and 4, hence HE=√(3^{2}+4^{2})=5.",
-          "Use HE as the base of the parallelogram. Since area=base×perpendicular height, the required height is 38÷5=7.6.",
-          "This uses a perpendicular height to HE, not the rectangle's vertical height. Computing the parallelogram's area first avoids needing to find a new angle or a slanted distance directly."
+          "The rectangle has width 4+6=10 and height 3+5=8, so its area is 80.",
+          "Two corner triangles have legs 3 and 4; the other two have legs 5 and 6. Their total area is 2×(3×4÷2)+2×(5×6÷2)=42.",
+          "Thus parallelogram EFGH has area 80−42=38. In right triangle AHE, HE=√(3^{2}+4^{2})=5.",
+          "With HE as base and d as its perpendicular height, 5d=38. Therefore d=38÷5=7.6."
         ]
       }
     },
@@ -8597,11 +8593,9 @@
         "choice": "C",
         "value": "5/18",
         "steps": [
-          "Scale the square to side length 3; scaling does not affect the requested area ratio.",
-          "The given divisions then give AF=CD=2 and EF=ED=1. Use the complementary regions rather than trying to find the target polygon's slanted sides.",
-          "The three outside right triangles have areas 3, 3, and 1/2 respectively.",
-          "The square has area 9, so the target area is 9−3−3−1/2=5/2.",
-          "Its fraction of the square is (5/2)/9=5/18. The subtraction includes each outside triangle once, and the final division by 9 converts the computed area back into the required ratio."
+          "Choose square side length 3, since scaling leaves an area ratio unchanged. Then AF=CD=2 and FE=DE=1.",
+          "Outside triangle BFD, right triangles ABF and BCD each have area 3×2÷2=3. Right triangle DEF has area 1×1÷2=1/2.",
+          "The square area is 9, so triangle BFD has area 9−3−3−1/2=5/2. Its ratio to the square is (5/2)÷9=5/18."
         ]
       }
     },
@@ -8748,8 +8742,8 @@
         "choice": "D",
         "value": "189",
         "steps": [
-          "The small rectangular sheet has area 6×7=42, while its kite has area 21. The unused area is therefore 42−21=21.",
-          "Both dimensions are multiplied by 3, so areas are multiplied by 3^{2}=9. The unused area becomes 21×9=189 square units."
+          "On the one-inch grid, the rectangle has area 6×7=42 square inches and the kite has area 6×7÷2=21 square inches. The waste is 42−21=21 square inches.",
+          "Tripling both dimensions multiplies every area by 3^{2}=9. Therefore the large sheet wastes 21×9=189 square inches."
         ]
       }
     },
@@ -8771,8 +8765,8 @@
         "choice": "D",
         "value": "30",
         "steps": [
-          "The two midlines divide the large square into eight congruent small right triangles.",
-          "The central square consists of four of these eight triangles, so it occupies 4/8=1/2 of the large square. Half of the given total area is 30, which is the required area."
+          "Draw AC and BD, joining opposite side midpoints. Together with the sides of the smaller square, these lines divide the large square into eight congruent right triangles.",
+          "Four of the eight triangles lie in the smaller square. Its area is therefore 4/8=1/2 of the larger area: 60÷2=30."
         ]
       }
     },
@@ -8863,10 +8857,9 @@
         "choice": "D",
         "value": "3",
         "steps": [
-          "The large triangle on the left has area 4 square units. The smaller unshaded triangle at its top left is similar to that large triangle.",
-          "Its corresponding lengths are half as large. Areas scale by the square of the length factor, so its area is (1/2)^{2}×4=1.",
-          "The shaded part is the large left triangle with this small triangle removed.",
-          "Therefore its area is 4−1=3. Using a factor of 1/2 for the area would be incorrect; the scale factor must be squared."
+          "Since C is the midpoint of YZ, triangles XYC and XCZ have equal bases and the same altitude. Thus triangle XYC has area 8÷2=4 square inches.",
+          "Let M be the intersection of AB and XC. The midpoint segment AB is parallel to YZ, so triangle XAM is similar to triangle XYC with length scale XA/XY=1/2.",
+          "Its area is (1/2)^{2}×4=1 square inch. The shaded region is triangle XYC minus triangle XAM, so its area is 4−1=3 square inches."
         ]
       }
     },
@@ -8984,10 +8977,10 @@
         "choice": "C",
         "value": "6",
         "steps": [
-          "The regular hexagon can be divided by joining its center to its vertices. This creates six congruent equilateral triangles.",
-          "Each small equilateral triangle has side length half that of the original equilateral triangle. Areas of similar figures scale as the square of the side-length ratio.",
-          "Since the original triangle has area 4, each small triangle has area 4×(1/2)^{2} = 1.",
-          "The six small triangles exactly fill the hexagon, so its area is 6×1 = 6. Using the squared scale factor is necessary; halving a side quarters the area."
+          "Let s be the original equilateral triangle's side and t the hexagon's side. Equal perimeters give 3s = 6t, hence t = s/2.",
+          "Join the hexagon's center to its six vertices. This divides it into six congruent equilateral triangles, each with side t = s/2.",
+          "Similar areas scale as the square of the side ratio. Each small triangle therefore has area 4×(1/2)^{2} = 1.",
+          "The six small triangles exactly fill the hexagon, giving total area 6×1 = 6."
         ]
       }
     },
@@ -9009,10 +9002,10 @@
         "choice": "B",
         "value": "30",
         "steps": [
-          "The area of triangle ABD is one third of the full area 360, hence 120. Because E is the midpoint of BD, triangles ABE and AED have equal bases and the same altitude from A. Thus ABE has area 60.",
-          "Relative to BC, D has two thirds of A's height. Since E is halfway from B to D, E has one third of A's height.",
-          "Along AF this means AE:EF=2:1.",
-          "Triangles ABE and EBF have bases AE and EF on the same line and the same altitude from B, so their areas are also in ratio 2:1. Therefore EBF has area 60/2=30."
+          "Triangle ABD has area 360/3=120 because AD is one third of AC. Since E is the midpoint of BD, triangle ABE has half this area, or 60.",
+          "Let A have height h above BC. Since DC/AC=2/3, D has height 2h/3. E, halfway from B to D, has height h/3.",
+          "F lies on BC and A,E,F are collinear. Their heights therefore show EF/AF=1/3 and AE/AF=2/3, so AE:EF=2:1.",
+          "Triangles ABE and EBF share an altitude from B to line AF. Their areas have ratio AE:EF=2:1, giving area EBF=60/2=30."
         ]
       }
     },
@@ -9401,11 +9394,9 @@
         "choice": "A",
         "value": "About 42%",
         "steps": [
-          "Read the successive radii as 2, 4, 6, 8, 10, and 12. The black regions are the central disk and the rings from radius 4 to 6 and from radius 8 to 10.",
-          "A ring's area is the outer disk area minus the inner disk area.",
-          "Thus black area=π[2^{2}+(6^{2}−4^{2})+(10^{2}−8^{2})]=π(4+20+36)=60π.",
-          "The full target is a disk of radius 12, with area 144π. Its black fraction is 60π/(144π)=5/12.",
-          "As a percentage, 5/12≈41.67%, nearest to 42%. Subtract the inner disk from each black ring; adding three whole disks would incorrectly include the white regions inside the outer rings."
+          "The nested circles have radii 2, 4, 6, 8, 10, and 12 inches. Their centers differ, but each smaller disk lies inside the next, so subtracting disk areas gives the area between them.",
+          "The black parts are the radius-2 disk and the regions between radii 4 and 6, and between radii 8 and 10. Their total area is π[2^{2}+(6^{2}−4^{2})+(10^{2}−8^{2})]=60π.",
+          "The whole design has area π×12^{2}=144π. Thus the black fraction is 60/144=5/12≈41.67%, closest to 42%."
         ]
       }
     },
@@ -9427,10 +9418,10 @@
         "choice": "B",
         "value": "1/2",
         "steps": [
-          "From the figure, PQ and RS each have length 2. These are the diameters of the two smaller semicircles, so each has radius 1.",
-          "Each small semicircle has area π×1^{2}/2 = π/2. Together they have area π.",
-          "The large circle has radius √2, so its area is π(√2)^{2} = 2π.",
-          "Therefore the indicated area fraction is π/(2π) = 1/2. The π factors cancel, leaving a ratio determined by the squared radii and the two half-circle factors."
+          "From P(−1,1) and Q(1,1), diameter PQ has length 2. Similarly, RS has length 2, so each smaller semicircle has radius 1.",
+          "Each semicircle has area π/2. Their combined area is therefore π.",
+          "The large circle is centered at O(0,0) and passes through Q(1,1). By the Pythagorean theorem, its squared radius is OQ^{2} = 1^{2}+1^{2} = 2, so its area is 2π.",
+          "The required ratio is π/(2π) = 1/2."
         ]
       }
     },
@@ -9722,10 +9713,10 @@
         "choice": "C",
         "value": "7000",
         "steps": [
-          "Start in the first grid square. Crossing an internal vertical or horizontal grid line normally enters one additional square.",
-          "The segment crosses 2999 internal vertical lines and 4999 internal horizontal lines. Counting these independently would give 1+2999+4999 squares.",
-          "At an internal lattice point, however, both lines are crossed simultaneously and only one new square is entered. There are gcd(3000,5000)-1=999 such points, so subtract 999. Those lattice points occur at (3j,5j) for j=1,2,...,999; the two endpoints are excluded because they are not internal crossings.",
-          "The result is 1+2999+4999-999=7000. Equivalently, the grid-square formula gives 3000+5000-gcd(3000,5000)=7000."
+          "Translate the starting point (2000,3000) to the origin. The other endpoint becomes (3000,5000), and this integer translation preserves the number of grid cells crossed.",
+          "Starting with the first cell, there are 2999 internal vertical crossings and 4999 internal horizontal crossings. Normally each enters one new cell.",
+          "At an internal lattice point, both lines are crossed together and enter only one new cell. Such points are (3j,5j), j=1,...,999, since gcd(3000,5000)=1000. Subtract these 999 double counts.",
+          "The number of colored cells is 1+2999+4999-999=7000."
         ]
       }
     },
@@ -9913,11 +9904,11 @@
         "choice": "C",
         "value": "15",
         "steps": [
-          "Let the inner square have side s and make angle θ with the outer frame. By symmetry take 0 ≤ θ ≤ 45°. Set c = cosθ, d = sinθ, and u = c+d. Its horizontal and vertical span is t = su ≤ 5.",
-          "Suppose s^{2} > 15. Use coordinates centered on the outer frame and rotate the axes to align with the inner square. The four inward corner vertices occupy the four quadrants, and each coordinate has absolute value at most 1.5u ≤ 7.5/s < s/2.",
-          "The square's center can move by at most (5−t)/2 in either original coordinate. In rotated coordinates, each center coordinate therefore has absolute value at most u(5−t)/2 = t(5−t)/(2s) ≤ 25/(8s) < s/2.",
-          "Choose an inward corner vertex in the center's quadrant. In each coordinate, the center and vertex have the same sign and both magnitudes are less than s/2. Their coordinate differences are therefore less than s/2, putting that vertex strictly inside the inner square. A small neighborhood then extends into a missing corner, a contradiction. Hence s^{2} ≤ 15.",
-          "To attain 15, choose the edge's horizontal and vertical components x,y with x+y = 5 and xy = 5, and center the square. Its vertices touch the frame and its sides pass through the inward corner vertices. Removing the four corner triangles from the 5×5 frame gives area 25−4(xy/2) = 25−10 = 15."
+          "Split the remaining space into a central 3-by-3 square and four 3-by-1 arms. If a fitted square has a vertex in the central region, its distance to the opposite vertex is at most √(4^{2}+3^{2})=5. Thus its area is at most 5^{2}/2=12.5.",
+          "Two vertices in the same arm are at most √(3^{2}+1^{2})=√10 apart. Whether they are adjacent or opposite, the square's area is at most 10. Therefore any square larger than 12.5 has one vertex in each arm.",
+          "In each arm, such a square occupies a triangle with base at most 3 and height at most 1. Its total area is at most the central area plus these four triangles: 9+4×(3×1/2)=15.",
+          "To attain 15, use coordinates centered on the frame and set a=√5/2. Place vertices at (2.5,a), (−a,2.5), (−2.5,−a), and (a,−2.5). Successive vertices are 90° rotations, so they form a square.",
+          "Its sides pass through the inward corners (±1.5,±1.5), and its vertices lie on the outer edges, so it fits. Its area is (2.5+a)^{2}+(2.5−a)^{2}=12.5+2a^{2}=15, attaining the upper bound."
         ]
       }
     },
@@ -10136,11 +10127,9 @@
         "choice": "A",
         "value": "0.25 centimeter",
         "steps": [
-          "Convert the stone's displaced volume into cubic centimeters: it displaces 1000 cubic centimeters of water.",
-          "The tank's rectangular base has area 100×40=4000 square centimeters.",
-          "If the water level rises by h centimeters, the added volume beneath the new level is base area×rise=4000h.",
-          "Equating this with the displaced volume gives 4000h=1000, hence h=1000/4000=0.25 centimeter.",
-          "The water does not overflow, so all the displaced volume contributes to the level rise. The stone's own shape is unnecessary; only its volume and the tank's constant horizontal cross-sectional area determine the rise."
+          "A fully submerged rock displaces water equal to its own volume, 1000 cubic centimeters. The aquarium has constant horizontal area 100×40=4000 square centimeters.",
+          "If the water rises h centimeters, the displaced volume is 4000h. Thus 4000h=1000, giving h=0.25 centimeter.",
+          "Check that the final depth is 37+0.25=37.25 centimeters, below the 50-centimeter tank height, so no water overflows."
         ]
       }
     },
@@ -10162,11 +10151,9 @@
         "choice": "C",
         "value": "About 151",
         "steps": [
-          "The sloping plane passes through the cylinder's center. Central symmetry of the cylinder takes every point in one piece to a point in the other piece.",
-          "This transformation preserves volume, so the two pieces have equal volumes. The wedge therefore has half the cylinder's volume.",
-          "The cylinder has diameter 8, hence radius 4, and length 6.",
-          "Its full volume is π×4^{2}×6=96π, so the wedge volume is 96π/2=48π.",
-          "Using π≈3.14 gives 48π≈150.8, nearest to 151 cubic units. The equal-volume conclusion comes from the center symmetry, rather than from the sloping face appearing to divide the drawing into equal areas."
+          "The cutting plane shown passes through the center of the cylinder. Reflection through that center exchanges the two pieces and preserves volume, so the wedge is half the cylinder.",
+          "The diameter is 8 centimeters, giving radius 4. The cylinder length is 6 centimeters, so its full volume is π×4^{2}×6=96π cubic centimeters.",
+          "The wedge volume is 96π÷2=48π≈150.8 cubic centimeters. The closest choice is 151."
         ]
       }
     },
@@ -10359,9 +10346,10 @@
         "choice": "A",
         "value": "1",
         "steps": [
-          "Track the folded octahedron by labeling its six vertices +X,-X,+Y,-Y,+Z,-Z, with opposite signs denoting opposite vertices.",
-          "Start with face 6 at (+X,+Y,+Z). Successive folds place Q at (-X,+Y,+Z), face 5 at (+X,-Y,+Z), face 4 at (+X,-Y,-Z), face 3 at (-X,-Y,-Z), and face 1 at (-X,+Y,-Z).",
-          "The right edge of Q joins -X to +Y. Face 1 contains those same two vertices, so face 1 lies across that edge."
+          "Faces 2,3,4,5 already meet at one vertex in the net. Since four faces meet at each octahedron vertex, these four faces form the lower half after folding.",
+          "The upper half therefore consists of faces 1,6,7,Q. In the net, face 6 shares one edge with Q and another with face 7.",
+          "These upper faces wrap around the top vertex in the order Q,6,7,1. Face 1 closes the ring by meeting the other side of Q.",
+          "With Q oriented as in the folded picture, face 6 is on its left, so face 1 is the numbered face on its right."
         ]
       }
     },
@@ -10383,9 +10371,9 @@
         "choice": "A",
         "value": "4",
         "steps": [
-          "Each small cube has two adjacent shaded faces. To hide both faces, the cube must touch other cubes across at least two faces.",
-          "With fewer than four cubes, some cube must have fewer than two face-neighbors. In particular, three cubes cannot all touch one another face-to-face, so they cannot form the necessary closed chain.",
-          "Four cubes arranged in a 2×2×1 block do work. Each cube has two adjacent inward faces that can be shaded and hidden. Thus the minimum is 4."
+          "Each cube has two adjacent shaded faces. Hiding both requires two neighboring cubes attached across those faces.",
+          "One or two cubes cannot give every cube two neighbors. With three cubes, each would have to touch both others. But two cubes attached across adjacent faces of a third meet only along an edge, not a face. Thus three cannot work.",
+          "Four cubes in a 2×2×1 block do work: orient each cube so its two shaded faces face the two neighboring cubes. All shaded faces are internal. Therefore the minimum is 4."
         ]
       }
     },
@@ -10407,10 +10395,10 @@
         "choice": "C",
         "value": "3/2",
         "steps": [
-          "Scale the cube edge to 1. The section EJCI is a rhombus, so its area is half the product of its perpendicular diagonals. Indeed, the perpendicular diagonals split a rhombus into four right triangles, whose combined area is half the product of the full diagonals.",
-          "Diagonal EC is a body diagonal of the cube, with length √(1^{2}+1^{2}+1^{2})=√3. Diagonal JI is a horizontal face diagonal, with length √(1^{2}+1^{2})=√2.",
-          "Therefore the section area is (1/2)√3×√2=√6/2. A cube face has area 1, so the area ratio is R=√6/2.",
-          "Squaring gives R^{2}=(√6/2)^{2}=6/4=3/2. Scaling the cube would multiply both areas equally, leaving this ratio unchanged."
+          "Scale the cube edge to 1. Each side of EJCI crosses a square face with perpendicular components 1 and 1/2, so all four sides have length √(1+1/4). Therefore EJCI is a rhombus.",
+          "Its diagonal EC is a body diagonal, of length √3. Since I and J are midpoints at the same height, IJ is parallel and equal in length to face diagonal FH, so IJ=√2.",
+          "A rhombus has perpendicular diagonals and area half their product. Thus its area is (1/2)√3×√2=√6/2.",
+          "A cube face has area 1, so R=√6/2 and R^{2}=6/4=3/2. The ratio is unchanged by scaling."
         ]
       }
     },
@@ -10432,10 +10420,10 @@
         "choice": "C",
         "value": "192",
         "steps": [
-          "Use the dimensions preserved when the net folds into the triangular prism. Its axis length is HJ=EF=8.",
-          "In the right-triangular base, BJ=AH=8. The other perpendicular leg is JG=GH-HJ=14-8=6.",
-          "Therefore the base area is (1/2)×8×6=24 square units. The factor 1/2 is necessary because the base is triangular, even though the perpendicular edge lengths can be read from rectangular parts of the net.",
-          "A prism's volume equals its base area times its axis length. Thus the volume is 24×8=192 cubic units. This uses the two perpendicular base legs, rather than an edge measured across the flattened net."
+          "After folding, the three lateral rectangles have the same prism length. Their corresponding edges give HJ=AB=BC=GF=EF=8.",
+          "In rectangle HJBA, BJ=AH=8. Also J lies on HG, so the other leg of right triangle BJG is JG=GH-HJ=14-8=6.",
+          "Thus the triangular base has area (1/2)×BJ×JG=(1/2)×8×6=24.",
+          "Multiply the base area by the prism length GF=8: the volume is 24×8=192 cubic units."
         ]
       }
     },
@@ -10768,8 +10756,8 @@
         "value": "26",
         "steps": [
           "Factor out 98!: 98!+99!+100! = 98!(1+99+100×99) = 98!×10,000.",
-          "A trailing zero requires a factor 10 = 2×5. There are more factors of 2 than factors of 5, so count the factors of 5. In 98!, multiples of 5 contribute 19 factors and multiples of 25 contribute 3 additional factors.",
-          "Thus 98! contains 19+3 = 22 factors of 5. Since 10,000 = 10^{4} contributes four more, the final product has 22+4 = 26 trailing zeros."
+          "In 98!, the 19 multiples of 5 each supply one factor of 5. The three multiples of 25 supply one additional factor each. There are no multiples of 125, so the total exponent is 19+3 = 22.",
+          "Since 10,000 = 2^{4}×5^{4}, it contributes four further factors of 5. The sum is divisible by 5^{26} but not 5^{27}, so the largest n is 22+4 = 26."
         ]
       }
     },
@@ -11014,9 +11002,9 @@
         "choice": "D",
         "value": "4",
         "steps": [
-          "The common unit price in cents must divide both 143 and 195. Factor them as 143 = 11×13 and 195 = 3×5×13.",
-          "Their common positive divisors are 1 and 13. A 1-cent price would require 143 sixth graders, exceeding the limit of 30, so the price must be 13 cents.",
-          "The two class counts are then 143/13 = 11 and 195/13 = 15. Their difference is 15−11 = 4 students."
+          "The common pencil price in cents must divide both 143 and 195. Since 143 = 11×13 and 195 = 3×5×13, their common positive divisors are 1 and 13.",
+          "A 1-cent price would require 195 sixth graders, exceeding the class limit of 30. Therefore each pencil costs 13 cents.",
+          "There were 143/13 = 11 seventh graders and 195/13 = 15 sixth graders. Thus 15−11 = 4 more sixth graders bought pencils."
         ]
       }
     },
@@ -11297,10 +11285,10 @@
         "choice": "C",
         "value": "60",
         "steps": [
-          "An arrangement in equal rows corresponds to choosing a positive divisor as the number of people per row. Therefore the desired total must have exactly 12 positive divisors.",
-          "It must also be a multiple of 30. Test the smallest positive multiples in order: 30, 60, and so on.",
-          "Since 30 = 2×3×5, it has (1+1)(1+1)(1+1) = 8 positive divisors, so it fails. But 60 = 2^{2}×3×5 has (2+1)(1+1)(1+1) = 12 divisors.",
-          "There is no positive multiple of 30 strictly between 30 and 60. Consequently 60 is the smallest possible total satisfying both requirements."
+          "Each equal-row arrangement corresponds to a positive divisor of the total student count. Twelve different arrangements, followed by no new one, mean exactly 12 positive divisors.",
+          "The group can stand with 15 or 6 students per row. Its total must therefore be divisible by lcm(15,6) = 30.",
+          "The smallest candidate, 30 = 2×3×5, has (1+1)^{3} = 8 divisors, so it fails. The next multiple, 60 = 2^{2}×3×5, has (2+1)(1+1)(1+1) = 12 divisors.",
+          "Thus 60 students meet both conditions, and no smaller positive multiple of 30 can work."
         ]
       }
     },
@@ -11372,8 +11360,8 @@
         "choice": "A",
         "value": "1",
         "steps": [
-          "Divide 23 by 6: 23 = 3×6+5. Five cars fill the incomplete group, so it needs one additional car.",
-          "Adding one gives 24 = 4×6, which divides evenly into six equal groups. Therefore the smallest possible addition is 1 car."
+          "Since 23 = 3×6+5, three complete rows use 18 cars and five cars remain. The incomplete row needs one more car.",
+          "With one additional car, there are 24 = 4×6 cars: four complete rows of six. Thus the smallest number to buy is 1."
         ]
       }
     },
@@ -11418,7 +11406,7 @@
         "choice": "B",
         "value": "2",
         "steps": [
-          "Only the units digit affects the units digit of the result. Each relevant power ends in 2, so the units calculation is 2-2-2-2-2-2=-8.",
+          "Only the units digits affect the units digit of the difference. All six integers end in 2, so the units calculation is 2-2-2-2-2-2=-8.",
           "Adding 10 gives the equivalent nonnegative remainder 2. Therefore the original integer has units digit 2."
         ]
       }
@@ -11897,10 +11885,9 @@
         "choice": "D",
         "value": "3",
         "steps": [
-          "The final digit gives T=7. Doubling the hundreds digit and allowing a carry makes the relevant two-digit total 14 or 15.",
-          "O must be even, so O=4 and there is no carry from the tens column. It follows that F=1 and R=8.",
-          "The remaining tens digit W is below 5 and differs from 1 and 4.",
-          "W=0 would force U=W, and W=2 would force U=O, violating distinctness. W=3 gives U=6, so W is 3."
+          "T=7 is given. In the hundreds column, 7+7 plus a possible carry is 14 or 15. Its units digit is O; since O is even, O=4, F=1, and the tens column has no carry.",
+          "In the units column, 4+4=8, so R=8 and there is no carry into the tens column. Thus U=2W and W<5.",
+          "W cannot be 1 or 4 because letters have different digits. W=0 gives U=W; W=2 gives U=O. The only remaining choice is W=3, giving U=6."
         ]
       }
     },
@@ -12091,11 +12078,9 @@
         "choice": "D",
         "value": "7425",
         "steps": [
-          "A valid candidate must contain each of the digits 2, 4, 5, and 7 once, and division by 3 must produce another number with exactly those same digits.",
-          "Test the listed candidates by dividing by 3 and checking all four digits of the quotient.",
-          "For 7425, the quotient is 7425÷3=2475.",
-          "Both 7425 and 2475 contain 2, 4, 5, and 7 exactly once, with no repeated or missing digit. Multiplying back gives 2475×3=7425.",
-          "The problem guarantees a unique number satisfying the condition, so this verified candidate identifies the answer. The digit check is essential: an integer quotient alone would not establish the required property."
+          "We need a listed four-digit number that is an integer multiple of another permutation of 2, 4, 5, and 7.",
+          "Check 7425: dividing by 3 gives 2475. Both numbers use each required digit exactly once, and 2475×3=7425.",
+          "Thus 7425 satisfies the condition. Since the problem states that only one of the 24 numbers is a multiple of another, this verified example determines the answer."
         ]
       }
     },
@@ -12289,10 +12274,10 @@
         "choice": "A",
         "value": "1",
         "steps": [
-          "Let p, n, d, q be the positive numbers of pennies, nickels, dimes, and quarters. The value condition modulo 5 gives p≡2 (mod 5).",
-          "The constraints also give p≤6, so p=2. There are then seven remaining coins: n+d+q=7.",
-          "Their total value is 100 cents, so 5n+10d+25q=100. Subtracting five times the coin-count equation gives d+4q=13.",
-          "If q=1 or 2, the resulting value of n is not positive. If q=3, then d=1 and n=3; larger q makes d negative. Thus there is one dime."
+          "Let p, n, d, q count pennies, nickels, dimes, and quarters. All are positive. The other coin values are multiples of 5, so p≡102≡2 (mod 5).",
+          "At least three coins are needed for the other types, so p≤9−3=6. Hence p=2, leaving n+d+q=7 and 5n+10d+25q=100.",
+          "Divide the value equation by 5 and subtract the count equation: d+4q=13. Thus d=13−4q and n=3q−6.",
+          "Positivity requires q≥3 from n>0 and q≤3 from d>0. Therefore q=3, d=1, n=3: there is one dime."
         ]
       }
     },
@@ -12436,10 +12421,10 @@
         "choice": "B",
         "value": "48",
         "steps": [
-          "Let N and M be the two groups' numbers of teams. Counting their contributions to the total number of games gives 3N+4M = 76.",
-          "The condition N > 2M implies 3N > 6M. Substituting into the total yields 76 > 10M, so M < 7.6. Together with M > 4, this leaves M = 5, 6, or 7.",
-          "Reduce the game-count equation modulo 3. Since 4M has the same remainder as M and 76 has remainder 1, M must have remainder 1. Only M = 7 works.",
-          "Then 3N = 76−4×7 = 48, so N = 16. The requested group's number of games is 3N = 48, and 16 > 2×7 checks the inequality."
+          "Let N be the games against each opponent in the same division, and M the games against each opponent in the other division. Three opponents of the first kind and four of the second give 3N+4M = 76.",
+          "Since N > 2M, we have 76 = 3N+4M > 10M. Thus M < 7.6; together with M > 4 and integer game counts, this leaves M = 5, 6, or 7.",
+          "In 3N+4M = 76, division by 3 shows that M has remainder 1. Only M = 7 works.",
+          "Therefore the team plays 3N = 76−4×7 = 48 games within its own division. Here N = 16 and 16 > 2×7, as required."
         ]
       }
     },
@@ -12609,10 +12594,9 @@
         "choice": "C",
         "value": "11",
         "steps": [
-          "Count the original figure's colors: there are 13 black blocks and 6 white blocks.",
-          "The added outside ring is white. Each of its six sides contributes three new blocks, giving 6×3=18 additional white blocks.",
-          "The new totals are therefore 6+18=24 white blocks and 13 black blocks.",
-          "The difference is 24−13=11. Separating the old figure from the newly added ring makes it unnecessary to recount every block in the finished pattern."
+          "The reprinted colors are reversed; use the stated counts of 13 shaded and 6 unshaded tiles. All tiles in the new border are unshaded.",
+          "The new hexagonal ring contains six corner tiles and two other tiles on each of its six sides: 6+6×2=18 tiles.",
+          "The new totals are 6+18=24 unshaded tiles and 13 shaded tiles. Their difference is 24−13=11."
         ]
       }
     },
@@ -12992,10 +12976,10 @@
         "choice": "C",
         "value": "2",
         "steps": [
-          "The numbers 1 through 9 sum to 45. Three equal-sum groups must therefore each sum to 45/3=15.",
-          "Count unordered partitions by examining the group containing 1. Its two other entries must sum to 14, so the only possibilities are {1,5,9} and {1,6,8}.",
-          "In the first case, the unused numbers split into {2,6,7} and {3,4,8}. In the second, they split into {2,4,9} and {3,5,7}.",
-          "Each remaining split is forced by requiring triples of sum 15. These two cases cannot overlap because their groups containing 1 differ. Thus there are 2 partitions."
+          "The cards total 1+2+...+9=45, so each group must sum to 15.",
+          "The group containing 1 needs two other numbers totaling 14. The only possibilities are {1,5,9} and {1,6,8}.",
+          "With {1,5,9}, the remaining group containing 2 needs two numbers totaling 13; only 6 and 7 remain available. This leaves {3,4,8}.",
+          "With {1,6,8}, the remaining group containing 2 can only be {2,4,9}, leaving {3,5,7}. Both partitions work, and the cases exhaust the choices. Thus there are 2 ways."
         ]
       }
     },
@@ -13716,7 +13700,7 @@
         "steps": [
           "There are 9 red pairs and 10 high-top pairs among 15 pairs in total. The two groups cannot be disjoint, because 9+10 exceeds 15.",
           "By inclusion-exclusion, at least 9+10-15=4 pairs must be both red and high-top.",
-          "The bound is attainable with 5 red low-top pairs, 6 white high-top pairs, and 4 red high-top pairs. These counts total 15 and satisfy both given totals. The minimum probability is therefore 4/15."
+          "This is attainable with 5 red low-top pairs, 6 white high-top pairs, and 4 red high-top pairs. These counts satisfy both totals. Therefore the least possible fraction is 4/15."
         ]
       }
     },
@@ -13935,11 +13919,10 @@
         "choice": "A",
         "value": "28",
         "steps": [
-          "Count paths upward from the starting cell. Write 0 for cells outside the board. Each permitted cell receives the sum of the counts in the two cells immediately below it.",
-          "Start with row 0, column 6 equal to 1. The next rows have counts row 1: (1,1), row 2: (1,2,1), and row 3: (1,3,3), in their permitted positions.",
-          "Continuing gives row 4 counts (1,4,6,3), row 5 counts (1,5,10,9), and row 6 counts (6,15,19,9). The missing boundary cells contribute nothing.",
-          "Q is in row 7, column 7. Its two predecessor cells have counts 19 and 9, so it receives 19+9=28 paths.",
-          "This addition rule counts every route exactly once according to its final step."
+          "Number columns 1 through 8 from left to right, and rows 0 through 7 from bottom to top. P is in row 0, column 6; Q is in row 7, column 7.",
+          "Give P count 1 and all other bottom cells count 0. Each unshaded cell gets the sum of the two cells diagonally below it; a cell outside the board contributes 0.",
+          "Reading nonzero counts left to right, rows 1,2,3 have (1,1), (1,2,1), (1,3,3). Rows 4,5,6 have (1,4,6,3), (1,5,10,9), (6,15,19,9).",
+          "The two cells below Q have counts 19 and 9. Thus Q receives 19+9=28 paths. Every path is counted exactly once by its last step."
         ]
       }
     },
@@ -14055,10 +14038,9 @@
         "choice": "D",
         "value": "8",
         "steps": [
-          "Every triangle in the diagram has a horizontal side, so use that side as its base. Separate the possibilities by base length: 1, 2, or 3 units.",
-          "For a fixed base length, compare the third vertex's horizontal position. Reflecting the whole triangle left to right preserves its three side lengths, so reflected placements represent the same triangle shape.",
-          "After identifying such mirror pairs, the base-length groups give 3, 3, and 2 distinct shapes, respectively. Their side-length triples differ, so they cannot be identified further.",
-          "The total number of noncongruent triangles is therefore 3+3+2 = 8. Counting shapes in this way avoids counting the same triangle again simply because it appears in a different position or orientation."
+          "Use the gap between neighboring points as 1 unit. Every triangle has two vertices on one row; take their horizontal side as base, with endpoints (0,0) and (b,0). The third vertex has height 1.",
+          "Reflect left to right to remove duplicate shapes. For base b = 1, the third vertex can have horizontal coordinate 0, −1, or −2; for b = 2, use 0, 1, or −1; for b = 3, use 0 or 1.",
+          "These give 3+3+2 = 8 shapes. Their sets of three side lengths are different, so no two representatives are congruent. Translation and reflection account for all other placements in the array."
         ]
       }
     },
@@ -14176,11 +14158,10 @@
         "choice": "D",
         "value": "4",
         "steps": [
-          "Scale the equilateral triangle so that each half-side has length 1. Every triangle formed from the marked points can then be classified by its three side lengths.",
-          "The possible nondegenerate side-length triples are (1,1,1), (1,1,√3), (1,√3,2), and (2,2,2).",
-          "The three side midpoints form the first type, and the three original vertices form the last type. Mixed selections of vertices and midpoints give the two intermediate types.",
-          "Triangles with the same triple are congruent by the side-side-side criterion, regardless of where they lie in the diagram.",
-          "Thus there are four distinct shapes. Grouping by side lengths prevents rotations and reflections of one shape from being counted as new triangles."
+          "Use half a side of the large triangle as one unit. Choosing all three original vertices gives sides (2,2,2); choosing all three midpoints gives (1,1,1).",
+          "With two original vertices, a midpoint on their side gives no triangle; either other midpoint gives sides (1,√3,2).",
+          "With one original vertex, the two adjacent midpoints give (1,1,1); either other midpoint pair gives (1,1,√3). These cases exhaust all selections.",
+          "Equal side-length triples give congruent triangles by SSS. There are four distinct triples, so four noncongruent triangles."
         ]
       }
     },
@@ -14368,10 +14349,9 @@
         "choice": "D",
         "value": "11/36",
         "steps": [
-          "Two dice have 6×6=36 equally likely ordered outcomes. Treat the first and second dice as distinguishable.",
-          "There are six outcomes with a 5 on the first die and six with a 5 on the second die.",
-          "The outcome (5,5) belongs to both groups, so subtract it once: 6+6−1=11 favorable outcomes.",
-          "Thus the probability of at least one 5 is 11/36. This is inclusion-exclusion: simply adding the two groups would count the double-5 outcome twice."
+          "A product of two die numbers is divisible by 5 only when at least one die shows 5, since 5 is the only face divisible by 5.",
+          "There are 6×6=36 equally likely ordered outcomes. Six have a 5 on the first die and six have a 5 on the second.",
+          "Subtract the overlap (5,5), counted twice: favorable outcomes=6+6−1=11. Thus the probability is 11/36."
         ]
       }
     },
@@ -15207,8 +15187,8 @@
         "choice": "A",
         "value": "10",
         "steps": [
-          "Use signed differences for the four games: 10, −10, 20, and 20. The negative difference must remain negative when the games are combined.",
-          "Their sum is 40. Divide by four games to obtain the mean difference 40÷4=10."
+          "Jenny's score minus Blake's score on the four tests is 10, −10, 20, and 20. Their total-score difference is 10−10+20+20=40 points.",
+          "Each average is the corresponding total divided by four, so the difference between their averages is 40÷4=10 points."
         ]
       }
     },
@@ -15867,8 +15847,8 @@
         "choice": "A",
         "value": "Range",
         "steps": [
-          "Replacing the minimum 42 by 40 leaves the maximum 73 unchanged. The range therefore increases from 73−42 = 31 to 73−40 = 33.",
-          "The median and mode remain 58. The mean and the midrange both decrease. Hence the range is the statistic that increases."
+          "Adding the twelfth score, 40, lowers the minimum from 42 to 40 while the maximum stays 73. The range therefore rises from 73−42 = 31 to 73−40 = 33.",
+          "The median and mode remain 58. Since 40 is below the old mean, the mean decreases; the midrange also decreases. Thus only the range increases."
         ]
       }
     },
@@ -16058,10 +16038,10 @@
         "choice": "D",
         "value": "7",
         "steps": [
-          "After three integers are added, there are nine distinct integers. The median is therefore the fifth number in increasing order.",
-          "Even if all three new integers are smaller, the fifth entry cannot fall below the second known entry, 3. Even if all three are larger, it cannot exceed the fifth known entry, 9.",
-          "Thus any possible median must be an integer from 3 through 9. Each value in this range can be attained by placing the new distinct integers suitably below and above it, leaving exactly four values on each side.",
-          "There are 9−3+1 = 7 integers in this inclusive range. Hence the median has 7 possible values."
+          "The median of nine distinct integers is the fifth entry in increasing order. It cannot be below 3, because 3, 4, 6, 9, and 14 would already give five larger entries.",
+          "It cannot exceed 9, because 2, 3, 4, 6, and 9 would already give five smaller entries. Thus only the integers 3 through 9 are possible.",
+          "For medians 3, 4, 5, and 6, add the triples (−1,0,1), (0,1,20), (0,5,20), and (0,20,21), respectively.",
+          "For medians 7, 8, and 9, add (7,20,21), (8,20,21), and (20,21,22), respectively. Each completed set has four entries on either side of its median, so all 7 values occur."
         ]
       }
     },
@@ -16294,8 +16274,8 @@
         "choice": "D",
         "value": "37",
         "steps": [
-          "The 50 people scoring at least 80 include both those scoring from 80 through 89 and those scoring at least 90.",
-          "Subtract the 13 people in the second group. The number scoring at least 80 but less than 90 is 50-13=37."
+          "The 50 students scoring at least 80% include both those below 90% and those scoring at least 90%.",
+          "Remove the 13 students scoring at least 90%. The number scoring at least 80% but less than 90% is 50-13=37."
         ]
       }
     },
@@ -16458,8 +16438,8 @@
         "choice": "A",
         "value": "Luke",
         "steps": [
-          "Only the order matters, so use Pedro as a reference point with relative amount 0. The given differences put Olympia at 3, Melina at 5, Luke at 9, and Nico at 11.",
-          "In increasing order these are Pedro, Olympia, Melina, Luke, and Nico. Luke is fourth."
+          "Measure finishing times in minutes after Pedro finishes. Pedro is at 0; Olympia is 3 minutes later, and Melina is 2 minutes after Olympia, at 5.",
+          "Luke is 6 minutes after Olympia, at 9, while Nico is at 11. The finishing order is Pedro, Olympia, Melina, Luke, Nico. Therefore Luke finishes fourth."
         ]
       }
     },
@@ -16606,10 +16586,10 @@
         "choice": "D",
         "value": "IV",
         "steps": [
-          "The pieces may not be rotated, so compare the labels on the sides that will actually touch.",
-          "Horizontally, II's right-hand 3 matches I's left-hand 3, and IV's right-hand 1 matches III's left-hand 1.",
-          "Vertically, II's lower 2 matches IV's upper 2, while I's lower 7 matches III's upper 7.",
-          "Thus the arrangement is A=II, B=I, C=IV, D=III. In particular, position C contains IV. Checking both horizontal and vertical contacts prevents an arrangement that fits only one row."
+          "Translation does not rotate a tile. Tile III has 0 on its bottom edge and 5 on its right edge; neither number appears on another tile.",
+          "Both edges must face outside the arrangement, so III must occupy D, the lower-right rectangle.",
+          "The tile at C must then have right-edge label 1 to match III. Only IV does, so C contains IV.",
+          "Check the full arrangement: A=II, B=I, C=IV, D=III. All four shared-edge labels match."
         ]
       }
     },
@@ -16631,9 +16611,10 @@
         "choice": "D",
         "value": "Cassie, Hannah, Bridget",
         "steps": [
-          "Write C, H, and B for Cassie's, Hannah's, and Bridget's scores. Cassie sees Hannah's score and can guarantee that she is not lowest only if C > H.",
-          "Bridget also sees Hannah's score, while Cassie's numerical score remains hidden from her. To guarantee that she is not highest, she must have B < H.",
-          "Combining the comparisons gives C > H > B. Thus the order from highest to lowest is Cassie, Hannah, Bridget. The argument uses the stated distinguishable scores, so no tie cases need to be inserted."
+          "Use the intended reading that each girl judges her own position by comparing her score with Hannah's visible paper. Write C, H, and B for Cassie's, Hannah's, and Bridget's scores.",
+          "Cassie can rule out being lowest from that comparison only if C > H: Hannah then supplies a known lower score.",
+          "Bridget can rule out being highest from her comparison only if B < H: Hannah then supplies a known higher score.",
+          "Combining these comparisons gives C > H > B, so the intended order from highest to lowest is Cassie, Hannah, Bridget."
         ]
       }
     },
@@ -16918,8 +16899,9 @@
         "choice": "B",
         "value": "10",
         "steps": [
-          "To make every amount, the first four coins must be pennies. Avoiding gaps then forces coin 5 to be at most 5 cents and coins 6 and 7 at most 10 cents. With only nine coins, the total is at most 4+5+20+50 = 79 cents.",
-          "Ten coins suffice: four pennies, one nickel, two dimes, and three quarters. The first seven cover 0 to 29 cents; adding each quarter extends this continuous range, eventually to 104 cents. Thus the minimum is 10."
+          "List the coins in increasing value. Making 1 through 4 cents requires four pennies. To avoid gaps, the next coins can be at most 5, 10, and 20 cents; available denominations limit them to a nickel and two dimes.",
+          "These seven coins total at most 29 cents. Nine coins total at most 29+25+25 = 79 cents, so cannot pay 99 cents.",
+          "Ten suffice: four pennies, a nickel, two dimes, and three quarters. They cover every amount from 0 through 29 cents; each quarter extends this continuous range by 25, reaching 104 cents."
         ]
       }
     },
@@ -16941,9 +16923,10 @@
         "choice": "E",
         "value": "5",
         "steps": [
-          "Each large tile covers an even number of cells in every row it meets. Because each row has seven cells, each row needs at least one unit tile: at least three altogether.",
-          "The total area is 21, and each large tile has area 4. Thus the unit-tile count is congruent to 1 modulo 4; the first possible count at least 3 is 5.",
-          "To attain 5, place one 1×4 tile in each row. In the remaining 3×3 region, put one 2×2 tile and five unit tiles."
+          "A 1×4 tile cannot stand vertically in a rectangle only 3 cells high, so it covers 4 cells in one row. A 2×2 tile covers 2 cells in each row it meets.",
+          "Thus large tiles cover an even number of cells in every row. Each 7-cell row needs at least one unit tile, so at least 3 are needed.",
+          "Since 21 minus the unit-tile count is divisible by 4, that count is 1 modulo 4. Its smallest possible value above 3 is 5.",
+          "Place one horizontal 1×4 tile in each row. Fill the remaining 3×3 region with one 2×2 tile and five unit tiles. Thus 5 is attainable."
         ]
       }
     },
@@ -16965,10 +16948,10 @@
         "choice": "D",
         "value": "353",
         "steps": [
-          "Each layer needs at least 50 bricks to span the required length. A layer using exactly 50 must consist entirely of long bricks.",
-          "Two consecutive 50-brick layers would place vertical joints directly above one another, which is forbidden. Among seven layers, at least three must therefore use 51 or more bricks.",
-          "The lower bound is 7×50+3=353 bricks.",
-          "It is attainable by alternating four 50-brick layers with three 51-brick layers. Since both the lower bound and a construction agree, the minimum is 353."
+          "Each 100-foot row needs at least 50 blocks. A 50-block row uses only 2-foot blocks, so two such rows cannot be adjacent: their joins would line up.",
+          "Among seven rows, at least three therefore need 51 or more blocks. This gives the lower bound 7×50+3=353.",
+          "Alternate four rows of fifty 2-foot blocks with three rows containing a 1-foot block at each end and forty-nine 2-foot blocks between them.",
+          "The joins alternate between even and odd distances from the end. This valid construction uses 4×50+3×51=353 blocks, proving the minimum."
         ]
       }
     },
@@ -17039,9 +17022,9 @@
         "choice": "E",
         "value": "55",
         "steps": [
-          "The 60 coins have total value 800 cents. To retain 710 cents while keeping as many coins as possible, discard 90 cents using as few coins as possible.",
-          "Three coins are worth at most 75 cents. Four also fail: with three quarters the fourth coin would need value 15, while with at most two quarters four coins total at most 70.",
-          "Five coins can make 90: 25+25+25+10+5=90. Thus at least five coins must be discarded, and 60-5=55 can be retained."
+          "The 60 stamps have total value 20×(5+10+25)=800 cents. To use 710 cents with as many stamps as possible, leave out 90 cents using as few stamps as possible.",
+          "Three stamps total at most 75 cents. Four 25-cent stamps total 100, not 90. With three 25-cent stamps the fourth would need value 15; with at most two, four stamps total at most 70.",
+          "Five stamps can total 90 cents: 25+25+25+10+5=90. Therefore the maximum number used is 60-5=55 stamps."
         ]
       }
     },
@@ -17087,9 +17070,10 @@
         "choice": "C",
         "value": "16",
         "steps": [
-          "Folding pairs all 36 coins into 18 pairs. There are 13 silver coins and 23 gold coins.",
-          "To minimize gold-gold pairs, pair every silver coin with a gold coin. This uses 13 gold coins and leaves 10 gold coins, which form 5 gold-gold pairs. Thus m=5.",
-          "At most floor(23/2)=11 gold-gold pairs are possible. This bound is attainable: use 11 gold-gold pairs, 6 silver-silver pairs, and 1 mixed pair. Hence M=11 and m+M=16."
+          "Folding pairs the 36 squares into 18 overlapping pairs. There are 13 silver squares and 23 gold squares.",
+          "Each silver square can prevent at most one pair from being gold-on-gold. Thus at least 18-13=5 gold-on-gold pairs are unavoidable.",
+          "This minimum is attainable: make 13 mixed pairs, leaving 10 gold squares in 5 gold-on-gold pairs. Thus m=5.",
+          "At most floor(23/2)=11 gold-on-gold pairs are possible. This is attainable with 11 gold-on-gold pairs, 6 silver-on-silver pairs, and 1 mixed pair. Hence M=11 and m+M=16."
         ]
       }
     },
@@ -17162,9 +17146,9 @@
         "choice": "A",
         "value": "28",
         "steps": [
-          "Build the shortest travel times from A in the permitted directions. First X=5 and M=min(8,5+2)=7.",
-          "Next Y=min(5+10,7+6)=13. Then C=min(7+14,13+5)=18. At each node, compare all available incoming routes.",
-          "Finally Z=min(7+25,13+17,18+10)=28. The route A-X-M-Y-C-Z attains this value, so the computed lower value is an actual route length. The shortest travel time is 28."
+          "Record the shortest distance from A to each town in kilometers. First X=5 and M=min(8,5+2)=7.",
+          "Next Y=min(5+10,7+6)=13, and C=min(7+14,13+5)=18. At each town, compare all incoming routes.",
+          "Finally Z=min(7+25,13+17,18+10)=28. The route A-X-M-Y-C-Z has length 5+2+6+5+10=28 kilometers, attaining this minimum."
         ]
       }
     },
@@ -17186,10 +17170,10 @@
         "choice": "A",
         "value": "12",
         "steps": [
-          "Connect two nodes in a new graph exactly when they are not adjacent in the original graph. Consecutive grades must follow edges of this new graph.",
-          "Node C can connect only to G, and node F only to D. Therefore C and F must be the two ends of the chain containing all seven grades. An internal node of a chain needs two different incident edges, which a node with only one allowable neighbor cannot supply.",
-          "Following the remaining allowable connections forces C-G-B-E-A-D-F, or the same chain in reverse.",
-          "In either orientation E has grade 4, while C and F receive grades 1 and 7 in some order. Their requested sum is 4+1+7=12."
+          "List the pods in grade order, from 1 to 7. Consecutive grades must occupy pods without a walkway between them.",
+          "C has only G as a possible consecutive-grade neighbor, and F has only D. Therefore C and F must be the two ends of this list, receiving grades 1 and 7. G and D occupy grades 2 and 6.",
+          "The remaining pods A,B,E occupy grades 3,4,5. A and B have a walkway, so they cannot occupy consecutive grades. They must receive grades 3 and 5, leaving E with grade 4.",
+          "Thus C+E+F=1+4+7=12, regardless of which end receives grade 1."
         ]
       }
     }

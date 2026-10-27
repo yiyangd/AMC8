@@ -8,7 +8,7 @@
       "sha256": "c6ad691cdc207f4149e89f23a211618e3afdd3a517622e7602a0998589365504"
     },
     "workbookPdf": {
-      "path": "output/pdf/AMC8_2000-2026_Topic-Based_Practice_Workbook_STEMHUB.pdf",
+      "path": "output/pdf/STEMHUB_AMC8_Workbook.pdf",
       "sha256": "1ed36119a14eff31a974d1901ea5e3d2c703a919739e7375d3fdd1d6f4dbaded"
     },
     "audit": {
@@ -29,19 +29,19 @@
     },
     "solutionsManifest": {
       "path": "output/amc8_topic_workbook/solutions_en_2026-10-26/solutions_manifest.json",
-      "sha256": "07b47fd25cc1880422c6a29d916994d7ca7435d8436f5a401d2a6d92393462a5"
+      "sha256": "b18ced42a938acf133b6758516b354e4bd3d0f161e09cdceba06e98ab74f3fdc"
     },
     "solutionsEarly": {
       "path": "output/amc8_topic_workbook/solutions_en_2026-10-26/content_2000_2008_en.json",
-      "sha256": "181898ea1885459f8fa2d9fd00035ad6c056279a8bd14f33ea6bbacd72a30c60"
+      "sha256": "dd1cc014c9b9b831dffd4bdd4332d94ccd6cd13ca3e3d6243b6e641b35de6e9b"
     },
     "solutionsMiddle": {
       "path": "output/amc8_topic_workbook/solutions_en_2026-10-26/content_2009_2017_en.json",
-      "sha256": "14e3bdffd39931b95099f09700b5f197c528460cf8b73444e9240939ebb06b69"
+      "sha256": "dd8e90927a2a6860efe07c8f542520f8cbe43173dce7c8b3551cf6c4769a833f"
     },
     "solutionsRecent": {
       "path": "output/amc8_topic_workbook/solutions_en_2026-10-26/content_2018_2026_en.json",
-      "sha256": "92ebf33543a19c5bbbbb18adc5e31bf8b974b1b3839cc931f4056bea536070a9"
+      "sha256": "31006191584953c7a6597d164116350c4d6c04e6674201d95d57b0314463e8c1"
     }
   },
   "recipe": {
@@ -68,7 +68,7 @@
   },
   "imagesComplete": 650,
   "imageBytes": 13756320,
-  "workbookJsonSha256": "83ee610e54191c6d185c2101e143d24d6dec1b57bcee0c34c5454f488119746a",
+  "workbookJsonSha256": "1b8a642d73044fd19671f50fd66555fd8fc53f6a296a04ef6e484b4047ff2bf3",
   "images": {
     "2000Q8": {
       "src": "questions/2000Q8.webp",
