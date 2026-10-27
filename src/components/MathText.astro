@@ -1,0 +1,16 @@
+---
+interface Props { text: string }
+const { text } = Astro.props;
+// Plain text remains escaped by Astro. Only explicit power/subscript markers create elements.
+const tokens: { kind: string; value: string }[] = [];
+const pattern = /([\^_])\{([^{}]+)\}|([\^_])(\d+|[A-Za-z])/g;
+let cursor = 0;
+for (const match of text.matchAll(pattern)) {
+  const start = match.index!;
+  if (start > cursor) tokens.push({ kind: 'text', value: text.slice(cursor, start) });
+  tokens.push({ kind: (match[1] || match[3]) === '^' ? 'sup' : 'sub', value: match[2] || match[4] });
+  cursor = start + match[0].length;
+}
+if (cursor < text.length) tokens.push({ kind: 'text', value: text.slice(cursor) });
+---
+{tokens.map(token => token.kind === 'sup' ? <sup>{token.value}</sup> : token.kind === 'sub' ? <sub>{token.value}</sub> : token.value)}

@@ -1,0 +1,22 @@
+{
+  "passed": true,
+  "origin": "http://127.0.0.1:4321",
+  "checks": [
+    "Homepage: seven cards, desktop grid",
+    "Chapter navigation and 30-question sample section",
+    "Part filters and answer disclosure",
+    "Search: ID, year, English and Chinese; hidden-part anchor reveal",
+    "Image enlargement and keyboard close",
+    "Deep refresh and previous/next links",
+    "Tablet: two cards per row and responsive reading",
+    "Mobile: one column, drawer, focus and no overflow",
+    "Special materials, geometry and multipart image decoding",
+    "Empty Part disabled and mathematical text safety"
+  ],
+  "issues": [],
+  "viewports": [
+    "1440×1000",
+    "820×1180",
+    "390×844"
+  ]
+}

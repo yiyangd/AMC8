@@ -1,0 +1,17 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import ChapterIcon from '../../components/ChapterIcon.astro';
+import { chapters, sections, chapterUrl, sectionUrl, url, type Chapter } from '../../lib/content';
+export function getStaticPaths() { return chapters.map(chapter => ({ params: { chapter: String(chapter.id) }, props: { chapter } })); }
+interface Props { chapter: Chapter }
+const { chapter } = Astro.props;
+const chapterSections = sections.filter(section => section.chapterId === chapter.id);
+---
+<Layout title={`Chapter ${chapter.id}. ${chapter.titleEn}`} reading chapterId={chapter.id}>
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a href={url()}>Workbook</a><span aria-hidden="true">/</span><span>Chapter {chapter.id}</span></nav>
+  <header class="page-heading"><p class="eyebrow">CHAPTER {String(chapter.id).padStart(2, '0')}</p><ChapterIcon id={chapter.id} size={48} /><h1>{chapter.titleEn}</h1><p class="title-zh" lang="zh">{chapter.titleZh}</p><p class="page-meta">{chapter.sectionCount} topics <span>·</span> {chapter.questionCount} questions</p></header>
+  <div class="section-list" aria-label="Sections">
+    {chapterSections.map(section => <a class="section-link" href={sectionUrl(section)}><span class="section-link-number">{section.id}</span><span class="section-link-main"><strong class="section-link-title">{section.titleEn}</strong><span class="section-link-zh" lang="zh">{section.titleZh}</span><span class="section-link-meta">{section.code} <span>·</span> {section.questionIds.length} questions</span></span><span aria-hidden="true">→</span></a>)}
+  </div>
+  <nav class="section-pagination" aria-label="Chapter navigation">{chapter.id > 1 ? <a class="pagination-link" href={chapterUrl(chapter.id - 1)}><span class="pagination-caption">← Previous chapter</span><strong>{chapters[chapter.id - 2].titleEn}</strong></a> : <span />}{chapter.id < 7 && <a class="pagination-link" href={chapterUrl(chapter.id + 1)}><span class="pagination-caption">Next chapter →</span><strong>{chapters[chapter.id].titleEn}</strong></a>}</nav>
+</Layout>

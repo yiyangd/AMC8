@@ -1,0 +1,23 @@
+---
+import { chapters, sections, url, chapterUrl, sectionUrl } from '../lib/content';
+interface Props { chapterId?: number; sectionId?: string }
+const { chapterId, sectionId } = Astro.props;
+---
+<aside class="sidebar" id="site-sidebar" aria-label="Workbook contents">
+  <nav aria-label="Chapters and sections">
+    <a class="nav-home" href={url()}><span aria-hidden="true">←</span> All chapters</a>
+    <div class="sidebar-label">WORKBOOK CONTENTS</div>
+    {chapters.map(chapter => <details class="chapter-nav" open={chapter.id === chapterId}>
+      <summary>
+        <span class="nav-chapter-number">{String(chapter.id).padStart(2, '0')}</span>
+        <span class="nav-chapter-title">{chapter.titleEn}<small lang="zh">{chapter.titleZh}</small></span>
+      </summary>
+      <div class="section-nav">
+        <a class="chapter-overview-link" href={chapterUrl(chapter.id)} aria-current={chapter.id === chapterId && !sectionId ? 'page' : undefined}>Chapter overview</a>
+        {sections.filter(section => section.chapterId === chapter.id).map(section => <a href={sectionUrl(section)} aria-current={section.id === sectionId ? 'page' : undefined}>
+          <span class="section-number">{section.id}</span><span class="section-label">{section.titleEn}<small lang="zh">{section.titleZh}</small></span>
+        </a>)}
+      </div>
+    </details>)}
+  </nav>
+</aside>

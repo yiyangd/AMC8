@@ -1,0 +1,22 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import QuestionCard from '../../components/QuestionCard.astro';
+import { sections, chapterById, sectionQuestions, sectionUrl, chapterUrl, url, type Section, type Part } from '../../lib/content';
+export function getStaticPaths() { return sections.map(section => ({ params: { section: section.slug }, props: { section } })); }
+interface Props { section: Section }
+const { section } = Astro.props;
+const chapter = chapterById.get(section.chapterId)!;
+const questionList = sectionQuestions(section);
+const sectionIndex = sections.findIndex(item => item.id === section.id);
+const previous = sections[sectionIndex - 1];
+const next = sections[sectionIndex + 1];
+const parts: Part[] = ['A', 'B', 'C'];
+---
+<Layout title={`Section ${section.id}. ${section.titleEn}`} reading chapterId={chapter.id} sectionId={section.id}>
+  <nav class="breadcrumbs" aria-label="Breadcrumb"><a href={url()}>Workbook</a><span aria-hidden="true">/</span><a href={chapterUrl(chapter.id)}>Chapter {chapter.id}</a><span aria-hidden="true">/</span><span>Section {section.id}</span></nav>
+  <header class="page-heading"><p class="eyebrow">SECTION {section.id} <span>·</span> {section.code}</p><h1>{section.titleEn}</h1><p class="title-zh" lang="zh">{section.titleZh}</p><p class="page-meta">{questionList.length} questions <span>·</span> {chapter.titleEn}</p></header>
+  <div class="part-filters" role="group" aria-label="Filter questions by original question range"><button type="button" data-filter="All" aria-pressed="true">All <span>{questionList.length}</span></button>{parts.map(part => <button type="button" data-filter={part} aria-pressed="false" disabled={!section.partCounts[part]} title={`Original Q${part === 'A' ? '1–10' : part === 'B' ? '11–20' : '21–25'}`}>Part {part} <span>{section.partCounts[part]}</span></button>)}</div>
+  <p class="filter-status sr-only" aria-live="polite">Showing all {questionList.length} questions</p>
+  <div class="question-list">{parts.filter(part => section.partCounts[part]).map(part => <section class="part-group" data-part-group={part} aria-labelledby={`part-${part}`}><h2 class="part-heading" id={`part-${part}`}>Part {part}<span>Original Q{part === 'A' ? '1–10' : part === 'B' ? '11–20' : '21–25'}</span></h2>{questionList.filter(q => q.part === part).map((question, i) => <QuestionCard question={question} eager={i === 0 && part === questionList[0].part} />)}</section>)}</div>
+  <nav class="section-pagination" aria-label="Section navigation">{previous ? <a class="pagination-link" href={sectionUrl(previous)}><span class="pagination-caption">← Previous section</span><strong>{previous.id}. {previous.titleEn}</strong></a> : <span />}{next && <a class="pagination-link" href={sectionUrl(next)}><span class="pagination-caption">Next section →</span><strong>{next.id}. {next.titleEn}</strong></a>}</nav>
+</Layout>

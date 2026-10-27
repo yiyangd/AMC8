@@ -1,0 +1,443 @@
+{
+  "schemaVersion": "amc8-content-audit-v1",
+  "passed": true,
+  "generatedAt": "2026-10-27T01:12:01.256Z",
+  "basePath": "/AMC8",
+  "stats": {
+    "selfTests": 6,
+    "sourceValidation": {
+      "requested": true,
+      "questionClassifications": 650,
+      "specialQuestions": 15
+    },
+    "chapters": 7,
+    "sections": 55,
+    "questions": 650,
+    "years": [
+      2000,
+      2001,
+      2002,
+      2003,
+      2004,
+      2005,
+      2006,
+      2007,
+      2008,
+      2009,
+      2010,
+      2011,
+      2012,
+      2013,
+      2014,
+      2015,
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2022,
+      2023,
+      2024,
+      2025,
+      2026
+    ],
+    "partCounts": {
+      "A": 260,
+      "B": 260,
+      "C": 130
+    },
+    "htmlPages": 63,
+    "renderedQuestionAnchors": 650,
+    "builtQuestionImages": 650,
+    "dataSha256": "83ee610e54191c6d185c2101e143d24d6dec1b57bcee0c34c5454f488119746a",
+    "ciWithoutLocalSource": {
+      "passed": true,
+      "errorCount": 0,
+      "warningCount": 0,
+      "command": "node scripts/validate.mjs"
+    }
+  },
+  "errorCount": 0,
+  "warningCount": 0,
+  "errors": [],
+  "warnings": [],
+  "checks": {
+    "DATA_FILE": 1,
+    "DATA_ARRAY": 3,
+    "CHAPTER_COUNT": 1,
+    "SECTION_COUNT": 1,
+    "QUESTION_COUNT": 1,
+    "UNIQUE_QUESTION_ID": 1,
+    "UNIQUE_SECTION": 1,
+    "UNIQUE_CHAPTER": 1,
+    "CHAPTER_ORDER": 1,
+    "SECTION_ORDER": 1,
+    "IMPORT_COMPLETE": 1,
+    "IMPORT_DATA_HASH": 1,
+    "CHAPTER_TITLES": 7,
+    "CHAPTER_QUESTION_TOTAL": 7,
+    "CHAPTER_SECTION_TOTAL": 7,
+    "SECTION_ID_SLUG": 55,
+    "SECTION_CHAPTER": 55,
+    "SECTION_CODE": 55,
+    "SECTION_TITLES": 55,
+    "SECTION_QUESTIONS": 55,
+    "SECTION_KNOWN_QUESTIONS": 55,
+    "SECTION_MAPPING": 55,
+    "PART_YEAR_NUMBER_ORDER": 55,
+    "SECTION_PART_TOTAL": 165,
+    "QUESTION_ID_YEAR_NUMBER": 650,
+    "QUESTION_ASSIGNED_ONCE": 650,
+    "QUESTION_PART": 650,
+    "WORKBOOK_PAGE": 650,
+    "ANSWER_CHOICE": 650,
+    "ANSWER_VALUE": 650,
+    "ENGLISH_ANSWER_VALUE": 650,
+    "ANSWER_STEPS": 650,
+    "QUESTION_IMAGE_PATH": 650,
+    "IMAGE_METADATA": 650,
+    "PUBLIC_IMAGE_EXISTS": 650,
+    "IMAGE_ACTUAL_DIMENSIONS": 650,
+    "IMPORT_IMAGE_HASH": 650,
+    "IMPORT_LOSSLESS_IMAGE": 650,
+    "TOTAL_PARTS": 1,
+    "ALL26_YEARS": 1,
+    "NO_PRIVATE_SOURCE_ANSWER_FIELDS": 1,
+    "SOURCE_CLASSIFICATION": 650,
+    "SOURCE_ANSWER_CHOICE": 650,
+    "SOURCE_FINGERPRINT": 10,
+    "SOURCE_WORKBOOK_PAGE": 650,
+    "SPECIAL_CROP_PROVENANCE": 15,
+    "SPECIAL_SHARED_CONTEXT": 12,
+    "SPECIAL_CORRECTED_2008": 1,
+    "SPECIAL_CONTINUATION_OPTIONS": 2,
+    "BUILT_HOME": 1,
+    "UNIQUE_HTML_IDS": 63,
+    "BASE_PATH": 7245,
+    "INTERNAL_LINK": 6533,
+    "LINK_ANCHOR_TARGET": 1363,
+    "DETAILS_CLOSED_BY_DEFAULT": 650,
+    "RENDERED_KNOWN_QUESTION": 650,
+    "QUESTION_ANCHOR": 650,
+    "RENDERED_PART": 650,
+    "RENDERED_QUESTION_IMAGE": 650,
+    "RENDERED_IMAGE_DIMENSIONS": 650,
+    "ONE_ANSWER_DETAILS": 650,
+    "SUMMARY_NO_ANSWER_LEAK": 650,
+    "RENDERED_ANSWER_VALUE": 650,
+    "RENDERED_ALL_STEPS": 650,
+    "NO_VISIBLE_ANSWER_LABEL": 650,
+    "NO_SOLUTION_STEP_LEAK": 650,
+    "ANSWER_MARKUP_ENCLOSED": 650,
+    "GLOBAL_ANSWER_ENCLOSURE": 1950,
+    "ALL650_RENDERED_ONCE": 1,
+    "BUILT_SECTION": 55,
+    "BUILT_SECTION_ORDER": 55,
+    "SECTION_PAGE_TITLE": 55,
+    "BUILT_PART_GROUP": 165,
+    "BUILT_CHAPTER": 7,
+    "CHAPTER_ALL_SECTION_LINKS": 7,
+    "HOME_ALL_CHAPTER_CARDS": 1,
+    "HOME_CHAPTER_CARD_CONTENT": 7,
+    "BUILT650_IMAGES": 1,
+    "DIST_IMAGE_UNCHANGED": 650,
+    "SEARCH_INDEX_EXISTS": 1,
+    "SEARCH650_QUESTIONS": 1,
+    "SEARCH_NAVIGATION_TOTALS": 1,
+    "SEARCH_NO_ANSWER_LEAK": 712,
+    "SEARCH_HREF_TARGET": 712
+  },
+  "specialPlacementReview": {
+    "scope": "12 shared-context questions, corrected2008Q25, two-page2022Q4/2025Q13; optional local source cross-check.",
+    "questions": [
+      {
+        "id": "2001Q7",
+        "sharedGroup": [
+          "2001Q7",
+          "2001Q8",
+          "2001Q9"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 112,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          406
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2001Q8",
+        "sharedGroup": [
+          "2001Q7",
+          "2001Q8",
+          "2001Q9"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 109,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          431
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2001Q9",
+        "sharedGroup": [
+          "2001Q7",
+          "2001Q8",
+          "2001Q9"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 129,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          431
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2002Q8",
+        "sharedGroup": [
+          "2002Q8",
+          "2002Q9",
+          "2002Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 266,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          471
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2002Q9",
+        "sharedGroup": [
+          "2002Q8",
+          "2002Q9",
+          "2002Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 266,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          471
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2002Q10",
+        "sharedGroup": [
+          "2002Q8",
+          "2002Q9",
+          "2002Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 248,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          459
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2003Q8",
+        "sharedGroup": [
+          "2003Q8",
+          "2003Q9",
+          "2003Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 112,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          623
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 2
+      },
+      {
+        "id": "2003Q9",
+        "sharedGroup": [
+          "2003Q8",
+          "2003Q9",
+          "2003Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 25,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          593
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2003Q10",
+        "sharedGroup": [
+          "2003Q8",
+          "2003Q9",
+          "2003Q10"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 25,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          580
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2006Q14",
+        "sharedGroup": [
+          "2006Q14",
+          "2006Q15",
+          "2006Q16"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 51,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          343
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2006Q15",
+        "sharedGroup": [
+          "2006Q14",
+          "2006Q15",
+          "2006Q16"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 51,
+        "contentBbox": [
+          308.9763779527559,
+          482.94488188976385,
+          555.5863779527559,
+          727.9448818897638
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2006Q16",
+        "sharedGroup": [
+          "2006Q14",
+          "2006Q15",
+          "2006Q16"
+        ],
+        "risk": "Standalone sibling source crop omits shared material; final accepted workbook crop must already include it.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 52,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          338
+        ],
+        "sharedContextIncluded": true,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2008Q25",
+        "sharedGroup": null,
+        "risk": "Corrected concentric-circle shading is mandatory; old licensed artwork was reversed.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 144,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.590377952756,
+          375.26800000000003
+        ],
+        "sharedContextIncluded": false,
+        "legacySourceImageParts": 1
+      },
+      {
+        "id": "2022Q4",
+        "sharedGroup": null,
+        "risk": "Legacy source spans two images/pages; choices on continuation must remain in the final crop.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 154,
+        "contentBbox": [
+          308.9763779527559,
+          143,
+          555.5863779527559,
+          740
+        ],
+        "sharedContextIncluded": false,
+        "legacySourceImageParts": 2
+      },
+      {
+        "id": "2025Q13",
+        "sharedGroup": null,
+        "risk": "Legacy source spans two images/pages; choices on continuation must remain in the final crop.",
+        "imagePresent": true,
+        "cropProvenancePresent": true,
+        "sourcePdfPage": 185,
+        "contentBbox": [
+          39.68503937007874,
+          143,
+          286.29503937007877,
+          564
+        ],
+        "sharedContextIncluded": false,
+        "legacySourceImageParts": 2
+      }
+    ]
+  }
+}

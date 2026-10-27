@@ -1,0 +1,12 @@
+---
+import { url, type Question } from '../lib/content';
+import MathText from './MathText.astro';
+interface Props { question: Question; eager?: boolean }
+const { question: q, eager = false } = Astro.props;
+---
+<article class="question-card" id={`q-${q.id.toLowerCase()}`} data-question-id={q.id} data-part={q.part}>
+  <div class="question-top"><a class="question-id" href={`#q-${q.id.toLowerCase()}`}>[{q.id}]</a><span class="part-badge">Part {q.part}</span><span class="question-source">Workbook p. {q.workbookPage}</span></div>
+  <button class="question-image-button" type="button" aria-label={`Enlarge question ${q.id}`} data-image={url(q.image.src)} data-question={q.id}><img src={url(q.image.src)} alt={`AMC 8 ${q.year}, question ${q.number}. Open image to enlarge.`} width={q.image.width} height={q.image.height} style={`width: min(${Math.round(q.image.displayWidth)}px, 100%);`} loading={eager ? 'eager' : 'lazy'} decoding="async" /></button>
+  <span class="image-hint" aria-hidden="true">Click question to enlarge</span>
+  <details class="answer-panel" data-answer="true"><summary>Show answer &amp; explanation</summary><div class="answer-content"><p class="answer-line"><span class="answer-choice">Answer {q.answer.choice}</span><span><MathText text={q.answer.value} /></span></p><ol class="solution-steps">{q.answer.steps.map(step => <li><MathText text={step} /></li>)}</ol></div></details>
+</article>

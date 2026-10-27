@@ -1,0 +1,20 @@
+---
+import Layout from '../layouts/Layout.astro';
+import ChapterIcon from '../components/ChapterIcon.astro';
+import { chapters, chapterUrl } from '../lib/content';
+---
+<Layout>
+  <section class="home-intro" aria-labelledby="home-title">
+    <p class="eyebrow">THE STEMHUB WORKBOOK</p>
+    <h1 class="home-title" id="home-title">Small steps.<br /><span>Stronger problem solvers.</span></h1>
+    <p class="home-subtitle">Explore AMC 8, one topic at a time.</p>
+    <p class="stats-line"><strong>650</strong> Questions <span>·</span> <strong>7</strong> Chapters <span>·</span> <strong>55</strong> Topics</p>
+  </section>
+  <div class="chapter-grid" aria-label="Workbook chapters">
+    {chapters.map(chapter => <a class="chapter-card" data-chapter-id={chapter.id} href={chapterUrl(chapter.id)}>
+      <div class="chapter-card-top"><span class="chapter-number">CHAPTER {String(chapter.id).padStart(2, '0')}</span><ChapterIcon id={chapter.id} /></div>
+      <h2>{chapter.titleEn}</h2><p class="title-zh" lang="zh">{chapter.titleZh}</p>
+      <div class="card-meta"><span>{chapter.sectionCount} topics <span aria-hidden="true">·</span> {chapter.questionCount} questions</span><span class="card-arrow" aria-hidden="true">↗</span></div>
+    </a>)}
+  </div>
+</Layout>
