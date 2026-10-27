@@ -54,6 +54,9 @@ function renderSearch() {
 }
 async function openSearch(trigger?: HTMLElement) {
   lastTrigger = trigger || document.activeElement as HTMLElement;
+  if (lastTrigger?.closest('#site-sidebar')) {
+    lastTrigger = document.querySelector<HTMLElement>('.menu-toggle');
+  }
   closeDrawer();
   if (!searchDialog.open) searchDialog.showModal();
   searchInput.focus();

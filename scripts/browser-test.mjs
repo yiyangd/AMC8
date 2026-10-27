@@ -95,7 +95,10 @@ try {
     await page.locator('.menu-toggle').click();
     assert.equal(await page.locator('.menu-toggle').getAttribute('aria-expanded'), 'true');
     assert(await page.locator('.sidebar .nav-home').isVisible());
+    await page.keyboard.press('Control+k');
+    assert(await page.locator('#search-dialog').isVisible());
     await page.keyboard.press('Escape');
+    assert.equal(await page.evaluate(() => document.activeElement?.className), 'menu-toggle');
     assert.equal(await page.locator('.menu-toggle').getAttribute('aria-expanded'), 'false');
     await page.screenshot({ path: 'reports/screenshots/ratios-mobile.png' });
   });
