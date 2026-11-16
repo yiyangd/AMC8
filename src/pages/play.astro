@@ -1,0 +1,166 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { choiceKeys, encounters } from '../data/monster-challenge';
+import { questionById, questionUrl, sectionUrl, sections } from '../lib/content';
+import '../styles/monster-challenge.css';
+
+const section = sections.find(item => item.id === '1.1')!;
+const sectionLink = sectionUrl(section);
+const sources = Object.fromEntries(encounters.map(({ sourceId }) => [sourceId, questionUrl(questionById.get(sourceId)!)]));
+const directions = [
+  { key: 'up', arrow: '↑', label: 'Move up' },
+  { key: 'left', arrow: '←', label: 'Move left' },
+  { key: 'down', arrow: '↓', label: 'Move down' },
+  { key: 'right', arrow: '→', label: 'Move right' },
+] as const;
+---
+
+<Layout title="Monster Challenge">
+  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)}>
+    <a class="monster-back" href={sectionLink}><span aria-hidden="true">←</span> Back to Section 1.1</a>
+    <header class="monster-heading">
+      <div>
+        <p class="monster-kicker">AMC 8 · Section 1.1</p>
+        <h1>Monster Challenge</h1>
+        <p class="monster-subtitle">Order of Operations &amp; Clever Computation</p>
+      </div>
+      <button type="button" class="monster-button monster-language" data-action="language" aria-pressed="false" lang="zh">中文辅助</button>
+    </header>
+
+    <section class="monster-intro" data-panel="intro" aria-labelledby="monster-intro-title">
+      <div class="monster-arena monster-intro-art" aria-hidden="true">
+        <div class="monster-platform"></div>
+        <div class="monster-foe monster-intro-foe">
+          <div class="monster-horn monster-horn--left"></div>
+          <div class="monster-horn monster-horn--right"></div>
+          <div class="monster-claw monster-claw--left"></div>
+          <div class="monster-claw monster-claw--right"></div>
+          <div class="monster-hull"></div>
+          <div class="monster-eyeplate"><i></i><i></i><i></i></div>
+          <div class="monster-targets">
+            {choiceKeys.map(choice => <span class="monster-target">{choice}</span>)}
+          </div>
+        </div>
+        <div class="monster-player">
+          <span class="monster-player-body"></span>
+          <span class="monster-player-helmet"></span>
+          <span class="monster-blaster"></span>
+        </div>
+      </div>
+      <div class="monster-intro-copy">
+        <h2 id="monster-intro-title">Three monsters to defeat</h2>
+        <p>Each math step unlocks one layer of armor. Read the question, pick an answer, then hold your shot on its matching target.</p>
+        <ul>
+          <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
+          <li><strong>Aim</strong> at A, B, or C. With a keyboard, tab to a target and press Enter.</li>
+          <li><strong>Try again</strong> if a wrong shot costs you a shield. Take as long as you need to read.</li>
+        </ul>
+        <button type="button" class="monster-button monster-button--primary" data-action="start">Start challenge <span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+
+    <section class="monster-stage" data-panel="game" aria-label="Monster encounter" hidden>
+      <section class="monster-question" aria-label="Problem and answer choices">
+        <h2 data-field="strategy"></h2>
+        <p class="monster-stem" data-field="stem"></p>
+        <p class="challenge-zh" lang="zh" data-field="stem-zh" hidden></p>
+        <ol class="monster-unlocked" data-results aria-label="Steps completed"></ol>
+        <div class="monster-step" aria-label="Current step">
+          <span>Step <span data-field="step">1</span> of 3</span>
+        </div>
+        <h3 class="monster-prompt" data-field="prompt" tabindex="-1"></h3>
+        <p class="challenge-zh" lang="zh" data-field="prompt-zh" hidden></p>
+        <ul class="monster-choices" aria-label="Answer choices">
+          {choiceKeys.map(choice => (
+            <li class="monster-choice">
+              <b aria-hidden="true">{choice}</b>
+              <span id={`monster-option-${choice}`} data-option={choice}></span>
+            </li>
+          ))}
+        </ul>
+        <div role="status" aria-atomic="true">
+          <p class="monster-feedback" data-field="feedback" hidden></p>
+          <p class="challenge-zh" lang="zh" data-field="feedback-zh" hidden></p>
+        </div>
+        <button type="button" class="monster-button monster-button--primary monster-recover" data-action="recover" hidden>Continue this step</button>
+      </section>
+
+      <div class="monster-field">
+        <div class="monster-hud">
+          <div class="monster-hud-foe">
+            <span class="monster-hud-count">Monster <span data-field="encounter">1</span> of 3</span>
+            <strong data-field="monster"></strong>
+          </div>
+          <div class="monster-hud-end">
+            <span class="monster-shields">
+              <span class="monster-shield-icons" aria-hidden="true"><i class="monster-shield"></i><i class="monster-shield"></i><i class="monster-shield"></i></span>
+              <span>Shields <strong data-field="shields">3</strong>/3</span>
+            </span>
+          </div>
+        </div>
+        <div class="monster-arena" data-arena data-monster="0" aria-label="Arena">
+          <div class="monster-platform"></div>
+          <div class="monster-player" data-player aria-hidden="true">
+            <span class="monster-player-body"></span>
+            <span class="monster-player-helmet"></span>
+            <span class="monster-blaster" data-muzzle></span>
+          </div>
+          <div class="monster-foe">
+            <div class="monster-horn monster-horn--left"></div>
+            <div class="monster-horn monster-horn--right"></div>
+            <div class="monster-claw monster-claw--left"></div>
+            <div class="monster-claw monster-claw--right"></div>
+            <div class="monster-hull"></div>
+            <div class="monster-eyeplate"><i></i><i></i><i></i></div>
+            <div class="monster-targets" role="group" aria-label="Shoot an answer target">
+              {choiceKeys.map(choice => <button type="button" class="monster-target" data-target={choice} aria-label={`Target ${choice}`} aria-describedby={`monster-option-${choice}`} aria-disabled="true" hidden>{choice}</button>)}
+            </div>
+          </div>
+          <svg class="monster-beam" data-beam viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
+            <line data-beam-line x1="0" y1="0" x2="0" y2="0"></line>
+          </svg>
+        </div>
+        <div class="monster-controls">
+          <div class="monster-keys"><span>Move</span><kbd>W A S D</kbd><span>or</span><kbd>↑ ← ↓ →</kbd></div>
+          <div class="monster-dpad" role="group" aria-label="Touch movement">
+            {directions.map(({ key, arrow, label }) => <button type="button" aria-label={label} data-move={key}>{arrow}</button>)}
+          </div>
+          <label class="monster-charge">Armor break <progress data-charge max="2000" value="0"></progress></label>
+        </div>
+      </div>
+    </section>
+
+    <section class="monster-review" data-panel="review" aria-labelledby="monster-review-title" hidden>
+      <p class="monster-kicker">Armor cleared · <span data-field="review-source-id"></span></p>
+      <h2 id="monster-review-title" data-field="review-title" tabindex="-1"></h2>
+      <p class="challenge-zh" lang="zh" data-field="review-title-zh" hidden></p>
+      <ol data-review-steps></ol>
+      <div class="monster-review-actions">
+        <button type="button" class="monster-button monster-button--primary" data-action="next">Next monster</button>
+        <a class="monster-source" data-review-link href={sectionLink} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+
+    <section class="monster-summary" data-panel="summary" aria-labelledby="monster-summary-title" tabindex="-1" hidden>
+      <h2 id="monster-summary-title">Challenge complete</h2>
+      <p><strong class="monster-score" data-field="score">0 / 9</strong> steps correct on the first try</p>
+      <div class="monster-summary-list">
+        {encounters.map(({ sourceId }) => (
+          <details data-review-card={sourceId}>
+            <summary data-card-title>{sourceId}</summary>
+            <ol data-card-steps></ol>
+            <a class="monster-source" href={sources[sourceId]} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
+          </details>
+        ))}
+      </div>
+      <div class="monster-summary-actions">
+        <button type="button" class="monster-button monster-button--primary" data-action="restart">Play again</button>
+        <a class="monster-back" href={sectionLink}><span aria-hidden="true">←</span> Back to Section 1.1</a>
+      </div>
+    </section>
+  </div>
+</Layout>
+
+<script>
+  import '../scripts/monster-challenge';
+</script>
