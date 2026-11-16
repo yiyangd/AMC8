@@ -1,13 +1,23 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
 
 const origin = (process.env.TEST_ORIGIN || 'http://127.0.0.1:4321').replace(/\/$/, '');
 const challengeUrl = `${origin}/AMC8/play/`;
 const encounters = [
-  { sourceId: '2005Q1', answers: 'BAC' },
-  { sourceId: '2008Q1', answers: 'CAB' },
-  { sourceId: '2014Q1', answers: 'ABC' },
-];
+  ['2010Q1', 'ACB'], ['2006Q2', 'BAC'], ['2025Q2', 'BCAB'], ['2005Q1', 'BAC'],
+  ['2008Q1', 'CAB'], ['2023Q1', 'ABCA'], ['2017Q1', 'CABC'], ['2014Q1', 'ABC'],
+  ['2026Q1', 'BCBA'], ['2026Q2', 'BACB'], ['2017Q5', 'BCAC'], ['2016Q8', 'CABC'],
+  ['2018Q5', 'BCAB'], ['2013Q3', 'ABCA'], ['2000Q8', 'BCAB'], ['2006Q9', 'BCAB'],
+  ['2018Q2', 'ACBA'], ['2022Q8', 'CBAC'], ['2020Q12', 'CABA'], ['2019Q17', 'ABCA'],
+].map(([sourceId, answers]) => ({ sourceId, answers }));
+const workbook = JSON.parse(await readFile(new URL('../src/data/workbook.json', import.meta.url), 'utf8'));
+const sourceIds = workbook.sections.find(section => section.id === '1.1').questionIds;
+const sourceQuestions = new Map(workbook.questions.map(question => [question.id, question]));
+assert.deepEqual(encounters.map(({ sourceId }) => sourceId).sort(), [...sourceIds].sort());
+
+const correctAt = (encounter, step) => encounters[encounter - 1].answers[step - 1];
+const wrongAt = (encounter, step) => ['A', 'B', 'C'].find(letter => letter !== correctAt(encounter, step));
 const options = { headless: true };
 if (process.env.PLAYWRIGHT_CHANNEL) options.channel = process.env.PLAYWRIGHT_CHANNEL;
 
@@ -133,7 +143,7 @@ async function emptyShot(page, game) {
 }
 
 async function finishStep(game, encounter, step, shields) {
-  if (step === 3) {
+  if (step === encounters[encounter - 1].answers.length) {
     await game.state('review');
     return;
   }
@@ -142,7 +152,7 @@ async function finishStep(game, encounter, step, shields) {
 }
 
 async function breakWithMouse(page, game, encounter, step, shields) {
-  const answer = encounters[encounter - 1].answers[step - 1];
+  const answer = correctAt(encounter, step);
   await mouseDown(page, game.target(answer));
   await game.state('breaking');
   await finishStep(game, encounter, step, shields);
@@ -177,11 +187,11 @@ async function setPageHidden(page, hidden) {
   }, hidden);
 }
 
-async function verifyReview(page, game, sourceId) {
+async function verifyReview(page, game, { sourceId, answers }) {
   await game.state('review');
   const label = new RegExp(sourceId.replace('Q', '\\s*Q'));
   await expect(game.field('review-source-id')).toContainText(label);
-  await expect(game.root.locator('[data-review-steps] li')).toHaveCount(3);
+  await expect(game.root.locator('[data-review-steps] li')).toHaveCount(answers.length);
   const anchor = `q-${sourceId.toLowerCase()}`;
   const href = await game.root.locator('[data-review-link]').getAttribute('href');
   assert(href, `Missing workbook link for ${sourceId}`);
@@ -216,22 +226,22 @@ async function inspectDesktop(page, game) {
   await expect(game.charge).toHaveJSProperty('value', 0);
   console.log('PASS Section 1.1 entry, movement, translation, initial reading grace and harmless empty shot');
 
-  await wrongHit(page, game, 'A', 2, true);
+  await wrongHit(page, game, wrongAt(1, 1), 2, true);
   await expect(game.root.locator('[data-beam]')).toHaveAttribute('data-kind', 'counter');
-  await expect(game.field('feedback')).toContainText('One division recovers the starting number.');
   await expect(game.field('feedback-zh')).toBeVisible();
   await atQuestion(game, 1, 1, 2);
   await page.waitForTimeout(700);
   await atQuestion(game, 1, 1, 2);
   await page.mouse.up();
 
-  await mouseDown(page, game.target('B'));
+  const firstTarget = game.target(correctAt(1, 1));
+  await mouseDown(page, firstTarget);
   await game.state('breaking');
   await expect.poll(() => readCharge(game)).toBeGreaterThan(200);
   await page.mouse.up();
   await expectPaused(page, game);
 
-  await mouseDown(page, game.target('B'));
+  await mouseDown(page, firstTarget);
   await expect.poll(() => readCharge(game)).toBeGreaterThan(550);
   await setPageHidden(page, true);
   await expectPaused(page, game);
@@ -239,7 +249,7 @@ async function inspectDesktop(page, game) {
   await expectPaused(page, game);
   await page.mouse.up();
 
-  await mouseDown(page, game.target('B'));
+  await mouseDown(page, firstTarget);
   await finishStep(game, 1, 1, 2);
   // Keep the pointer pressed into the next question. It may neither answer nor chip a target.
   await page.waitForTimeout(350);
@@ -250,7 +260,7 @@ async function inspectDesktop(page, game) {
 
   await breakWithMouse(page, game, 1, 2, 2);
   await breakWithMouse(page, game, 1, 3, 2);
-  await verifyReview(page, game, encounters[0].sourceId);
+  await verifyReview(page, game, encounters[0]);
   await game.action('next').click();
   await game.state('approach');
   await moveWithKeyboard(page, game, 'ArrowLeft', 'x', -1);
@@ -260,7 +270,7 @@ async function inspectDesktop(page, game) {
   await expect(results).toHaveCount(1);
   const solvedSteps = await results.allTextContents();
   for (const shields of [2, 1, 0]) {
-    await wrongHit(page, game, 'B', shields);
+    await wrongHit(page, game, wrongAt(2, 2), shields);
     if (shields) await atQuestion(game, 2, 2, shields);
   }
   await game.state('empty');
@@ -269,29 +279,12 @@ async function inspectDesktop(page, game) {
   await expect(results).toHaveText(solvedSteps);
   await breakWithMouse(page, game, 2, 2, 3);
   await breakWithMouse(page, game, 2, 3, 3);
-  await verifyReview(page, game, encounters[1].sourceId);
+  await verifyReview(page, game, encounters[1]);
   await game.action('next').click();
   await game.state('approach');
   await moveWithKeyboard(page, game, 'ArrowDown', 'y', 1);
   await atQuestion(game, 3, 1, 3);
-  for (const step of [1, 2, 3]) await breakWithMouse(page, game, 3, step, 3);
-  await verifyReview(page, game, encounters[2].sourceId);
-  await game.action('next').click();
-  await game.state('summary');
-  await expect(game.field('score')).toHaveText(/7\s*\/\s*9/);
-  for (const { sourceId } of encounters) {
-    const card = game.root.locator(`[data-review-card="${sourceId}"]`);
-    await expect(card).toBeVisible();
-    await expect(card.locator('[data-card-steps] li')).toHaveCount(3);
-    await expect(card.locator('a')).toHaveAttribute('href', new RegExp(`#q-${sourceId.toLowerCase()}$`));
-  }
-  const firstCard = game.root.locator('[data-review-card="2005Q1"]');
-  await firstCard.locator('summary').click();
-  const [workbook] = await Promise.all([page.waitForEvent('popup'), firstCard.locator('a').click()]);
-  await expect(workbook.locator('#q-2005q1')).toBeVisible();
-  await workbook.close();
-  await game.state('summary');
-  console.log('PASS recovery preserves the current step, all nine choices resolve and every workbook source is linked');
+  console.log('PASS recovery preserves the current step and earlier answers');
 }
 
 async function expectAttackWarning(game) {
@@ -319,7 +312,7 @@ async function inspectActiveAttacks(page) {
   await expectAttackWarning(game);
   const lockedX = await game.attackMarker.evaluate(marker => marker.style.getPropertyValue('--attack-x'));
   const initialX = await playerAxis(game, 'x');
-  await mouseDown(page, game.target('B'));
+  await mouseDown(page, game.target(correctAt(1, 1)));
   await game.state('breaking');
   await page.keyboard.down('d');
   try {
@@ -337,9 +330,9 @@ async function inspectActiveAttacks(page) {
   await page.mouse.up();
   console.log('PASS warnings precede damage, stationary players lose one shield, and moving while charging dodges the same attack');
 
-  await wrongHit(page, game, 'B', 1);
+  await wrongHit(page, game, wrongAt(1, 2), 1);
   await atQuestion(game, 1, 2, 1);
-  await mouseDown(page, game.target('A'));
+  await mouseDown(page, game.target(correctAt(1, 2)));
   await game.state('breaking');
   await expect.poll(() => readCharge(game)).toBeGreaterThan(250);
   await page.mouse.up();
@@ -407,7 +400,7 @@ async function inspectTouch(context, page) {
 
   const moveButton = game.root.locator('[data-move="right"]');
   await moveButton.scrollIntoViewIfNeeded();
-  const shotPoint = await center(game.target('B'));
+  const shotPoint = await center(game.target(correctAt(1, 1)));
   const movePoint = await center(moveButton);
   await expectAttackWarning(game);
   const warningX = await playerAxis(game, 'x');
@@ -422,7 +415,85 @@ async function inspectTouch(context, page) {
   console.log('PASS mobile touch movement, readable layout, and two-finger dodge while holding a shot');
 }
 
+function normalizedAnswer(text) {
+  return text.trim().replace(/\s+(?:students|points)$/i, '').replace(/[,$\s]/g, '').replaceAll('−', '-');
+}
+
+async function verifyQuestionReference(page, game, sourceId) {
+  const figure = game.root.locator('[data-level-figure]');
+  const grid = game.root.locator('[data-level-grid]');
+  if (sourceId === '2025Q2' || sourceId === '2000Q8') {
+    await expect(figure).toBeVisible();
+    await expect.poll(() => figure.locator('img').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+    await expect(figure.locator('img')).toHaveAttribute('alt', /\S/);
+    await figure.press('Enter');
+    await expect(page.locator('#image-dialog')).toBeVisible();
+    await page.clock.runFor(7000);
+    await expect(game.field('shields')).toHaveText('3');
+    await expect(game.attackMarker).toBeHidden();
+    await page.locator('#image-dialog [data-close-dialog]').press('Enter');
+    await expect(page.locator('#image-dialog')).toBeHidden();
+  } else {
+    await expect(figure).toBeHidden();
+  }
+  if (sourceId === '2026Q2') {
+    await expect(grid).toBeVisible();
+    await expect(grid.locator('tr')).toHaveCount(5);
+    await expect(grid.locator('td')).toHaveCount(35);
+    assert.equal((await grid.locator('td').allTextContents()).reduce((sum, value) => sum + Number(value), 0), 53);
+  } else {
+    await expect(grid).toBeHidden();
+  }
+}
+
+async function inspectFullSection(page) {
+  const now = new Date('2026-11-16T12:00:00Z');
+  await page.clock.install({ time: now });
+  await page.clock.pauseAt(now.getTime() + 1000);
+  const game = await open(page);
+  await expect(game.root.getByRole('heading', { name: `${encounters.length} monsters to defeat` })).toBeVisible();
+  await game.action('start').press('Enter');
+
+  for (const [index, level] of encounters.entries()) {
+    const { sourceId, answers } = level;
+    await game.state('approach');
+    await page.clock.runFor(1260);
+    await atQuestion(game, index + 1, 1, 3);
+    await expect(game.field('step-total')).toHaveText(String(answers.length));
+    await verifyQuestionReference(page, game, sourceId);
+    for (const [step, answer] of Array.from(answers).entries()) {
+      await game.state('question');
+      await expect(game.field('step')).toHaveText(String(step + 1));
+      await expect(game.root.locator('[data-results] li')).toHaveCount(step);
+      if (step === answers.length - 1) {
+        const answerText = await game.root.locator(`[data-option="${answer}"]`).innerText();
+        const sourceValue = sourceQuestions.get(sourceId).answer.value;
+        assert.equal(normalizedAnswer(answerText), normalizedAnswer(sourceValue), `${sourceId} final game answer`);
+      }
+      await game.target(answer).press('Enter');
+      await game.state('breaking');
+      await page.clock.runFor(2510);
+    }
+    await verifyReview(page, game, level);
+    await game.action('next').press('Enter');
+  }
+  const totalSteps = encounters.reduce((total, level) => total + level.answers.length, 0);
+  await game.state('summary');
+  await expect(game.field('score')).toHaveText(`${totalSteps} / ${totalSteps}`);
+  for (const { sourceId, answers } of encounters) {
+    const card = game.root.locator(`[data-review-card="${sourceId}"]`);
+    await expect(card).toBeVisible();
+    await expect(card.locator('[data-card-steps] li')).toHaveCount(answers.length);
+    await expect(card.locator('a')).toHaveAttribute('href', new RegExp(`#q-${sourceId.toLowerCase()}$`));
+  }
+  console.log(`PASS all ${encounters.length} levels in order, ${totalSteps} checkpoints, source answers and references`);
+}
+
 try {
+  const fullSection = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await inspectFullSection(fullSection);
+  await fullSection.close();
+
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   const desktopGame = await open(desktop, true);
   await withAutomaticDodging(desktop, desktopGame, () => inspectDesktop(desktop, desktopGame));

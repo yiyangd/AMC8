@@ -1,4 +1,5 @@
-import { choiceKeys, encounters, type ChoiceKey, type Localized } from '../data/monster-challenge';
+import { encounters } from '../data/monster-challenge';
+import { choiceKeys, type ChoiceKey, type Localized } from '../data/monster-challenge-types';
 
 type Phase = 'intro' | 'approach' | 'question' | 'breaking' | 'counter' | 'empty' | 'step-cleared' | 'review' | 'summary';
 type Point = { x: number; y: number };
@@ -59,12 +60,18 @@ function mountChallenge(root: HTMLElement) {
   const beamLine = find<SVGLineElement>('[data-beam-line]');
   const chargeDisplay = find<HTMLProgressElement>('[data-charge]');
   const results = find('[data-results]');
+  const figureButton = find<HTMLButtonElement>('[data-level-figure]');
+  const figureImage = find<HTMLImageElement>('[data-level-figure-image]');
+  const figureDescription = find('#monster-figure-description');
+  const numberGrid = find<HTMLTableElement>('[data-level-grid]');
+  const gridRows = find<HTMLTableSectionElement>('[data-level-grid] tbody');
   const prompt = field('prompt');
   const recover = action('recover');
   const language = action('language');
   const next = action('next');
   const reviewLink = find<HTMLAnchorElement>('[data-review-link]');
   const sources: Record<string, string> = JSON.parse(root.dataset.sources ?? '{}');
+  const figures: Record<string, string> = JSON.parse(root.dataset.figures ?? '{}');
   const targets = choiceKeys.map(key => ({
     key,
     button: find<HTMLButtonElement>(`[data-target="${key}"]`),
@@ -96,6 +103,7 @@ function mountChallenge(root: HTMLElement) {
 
   const currentEncounter = () => encounters[encounterIndex];
   const currentStep = () => currentEncounter().steps[stepIndex];
+  const attackTiming = () => attackTimings[Math.floor(encounterIndex * attackTimings.length / encounters.length)];
   const inArena = () => phase !== 'intro' && phase !== 'review' && phase !== 'summary';
   const paused = () => blurred || document.hidden || Boolean(document.querySelector('dialog[open]'));
 
@@ -134,23 +142,50 @@ function mountChallenge(root: HTMLElement) {
     if (list instanceof HTMLElement) list.hidden = values.length === 0;
   }
 
+  function renderQuestionReference() {
+    const { sourceId, figure, grid } = currentEncounter();
+    figureButton.hidden = !figure;
+    figureDescription.hidden = !figure;
+    if (figure) {
+      const src = figures[sourceId];
+      if (figureImage.getAttribute('src') !== src) figureImage.src = src;
+      figureImage.alt = figure.description.en;
+      figureButton.dataset.image = src;
+      figureButton.dataset.imageDescription = showChinese ? figure.description.zh : figure.description.en;
+      figureButton.dataset.imageLanguage = showChinese ? 'zh' : 'en';
+      figureButton.dataset.question = sourceId;
+      figureDescription.replaceChildren(...localizedNodes(figure.description));
+    }
+    numberGrid.hidden = !grid;
+    if (grid && numberGrid.dataset.sourceId !== sourceId) {
+      gridRows.replaceChildren();
+      for (const row of grid) {
+        const tableRow = gridRows.insertRow();
+        for (const value of row) tableRow.insertCell().textContent = String(value);
+      }
+      numberGrid.dataset.sourceId = sourceId;
+    }
+  }
+
   function renderGame() {
     const encounter = currentEncounter();
     const step = currentStep();
     const cleared = stepIndex + Number(phase === 'step-cleared');
     const active = phase === 'question' || phase === 'breaking';
 
-    arena.dataset.monster = String(encounterIndex);
-    root.dataset.cleared = String(cleared);
+    arena.dataset.monster = String(encounterIndex % 3);
+    root.toggleAttribute('data-final-armor', phase === 'step-cleared' && cleared === encounter.steps.length);
     renderShields();
     renderAttack();
     setText(field('encounter'), String(encounterIndex + 1));
     setText(field('step'), String(stepIndex + 1));
+    setText(field('step-total'), String(encounter.steps.length));
     setText(field('monster'), encounter.monster.en);
     const strategy = field('strategy');
     strategy.replaceChildren(...(cleared ? localizedNodes(encounter.title) : []));
     strategy.hidden = cleared === 0;
     showTranslation('stem', encounter.stem);
+    renderQuestionReference();
     showTranslation('prompt', step.prompt);
     showTranslation('feedback', feedback);
     const feedbackField = field('feedback');
@@ -289,7 +324,7 @@ function mountChallenge(root: HTMLElement) {
 
   function resetAttack() {
     attack = null;
-    attackDelay = attackTimings[encounterIndex].first;
+    attackDelay = attackTiming().first;
     attackMessage = 'idle';
     attackProjectile.hidden = true;
     renderAttack();
@@ -302,7 +337,7 @@ function mountChallenge(root: HTMLElement) {
       stage: 'warning',
       aim: { ...position },
       origin: { x: (emitter.x - bounds.x) * 100 / bounds.width, y: (emitter.y - bounds.y) * 100 / bounds.height },
-      remaining: attackTimings[encounterIndex].warning,
+      remaining: attackTiming().warning,
     };
     attackMarker.style.setProperty('--attack-x', `${attack.aim.x}%`);
     attackMarker.style.setProperty('--attack-y', `${attack.aim.y}%`);
@@ -347,7 +382,7 @@ function mountChallenge(root: HTMLElement) {
       attack.remaining -= elapsed;
       if (attack.remaining <= 0) {
         attack = null;
-        attackDelay = attackTimings[encounterIndex].repeat;
+        attackDelay = attackTiming().repeat;
         renderAttack();
       }
       return;

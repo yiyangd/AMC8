@@ -100,7 +100,8 @@ document.querySelectorAll<HTMLButtonElement>('.question-image-button').forEach(b
   button.addEventListener('click', () => {
     lastTrigger = button;
     zoomImage.src = button.dataset.image!;
-    zoomImage.alt = `AMC 8 question ${button.dataset.question}, enlarged`;
+    zoomImage.alt = button.dataset.imageDescription ?? `AMC 8 question ${button.dataset.question}, enlarged`;
+    zoomImage.lang = button.dataset.imageLanguage ?? 'en';
     document.querySelector('#image-title')!.textContent = `[${button.dataset.question}]`;
     imageDialog.showModal();
   });

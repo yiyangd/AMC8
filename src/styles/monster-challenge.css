@@ -362,7 +362,7 @@
   to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
-[data-state='step-cleared'][data-cleared='3'] [data-arena] .monster-foe {
+[data-final-armor] [data-arena] .monster-foe {
   animation: monster-retreat .45s ease-in both;
 }
 
@@ -629,6 +629,27 @@
   letter-spacing: -.04em;
 }
 
+.monster-stem, .monster-question [data-field='stem-zh'] { overflow-wrap: anywhere; white-space: pre-line; }
+
+.monster-figure {
+  margin-block: 12px;
+  padding: 6px;
+  border: 1px solid var(--game-line);
+  border-radius: 7px;
+}
+
+.monster-figure img { max-height: 290px; object-fit: contain; }
+
+.monster-number-grid {
+  width: min(100%, 16rem);
+  margin-block: 12px;
+  border-spacing: 3px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.monster-number-grid td { padding: .1rem; border-radius: 3px; background: #f0f4f9; }
+
 .monster-stem {
   margin: 10px 0 15px;
   font-size: .91rem;
@@ -793,7 +814,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   [data-state='approach'] [data-arena] .monster-foe,
-  [data-state='step-cleared'][data-cleared='3'] [data-arena] .monster-foe,
+  [data-final-armor] [data-arena] .monster-foe,
   [data-state='step-cleared'] .monster-target[data-hit='correct'],
   [data-attack] .monster-attack-marker { animation: none; }
 }

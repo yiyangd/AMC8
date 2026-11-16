@@ -1,33 +1,9 @@
-export type Locale = 'en' | 'zh';
-export type Localized = Record<Locale, string>;
-export type ChoiceKey = 'A' | 'B' | 'C';
+import { advancedEncounters } from './monster-challenge-advanced';
+import { basicEncounters } from './monster-challenge-basics';
+import { patternEncounters } from './monster-challenge-patterns';
+import { bilingual, type ChallengeEncounter } from './monster-challenge-types';
 
-export const choiceKeys = ['A', 'B', 'C'] as const;
-
-export interface ChallengeOption {
-  text: Localized;
-  hint?: Localized;
-}
-
-export interface ChallengeStep {
-  prompt: Localized;
-  options: Record<ChoiceKey, ChallengeOption>;
-  correct: ChoiceKey;
-  explanation: Localized;
-  unlocked: Localized;
-}
-
-export interface ChallengeEncounter {
-  sourceId: string;
-  monster: Localized;
-  title: Localized;
-  stem: Localized;
-  steps: readonly [ChallengeStep, ChallengeStep, ChallengeStep];
-}
-
-const bilingual = (en: string, zh: string): Localized => ({ en, zh });
-
-export const encounters: readonly ChallengeEncounter[] = [
+const originalEncounters: readonly ChallengeEncounter[] = [
   {
     sourceId: '2005Q1',
     monster: bilingual('Sprout', '芽芽'),
@@ -218,3 +194,21 @@ export const encounters: readonly ChallengeEncounter[] = [
     ],
   },
 ];
+
+const encountersById = new Map(
+  [...originalEncounters, ...basicEncounters, ...patternEncounters, ...advancedEncounters]
+    .map(encounter => [encounter.sourceId, encounter]),
+);
+
+// Move from single operations to grouping, factorials, and overlapping cancellations.
+const levelOrder = [
+  '2010Q1', '2006Q2', '2025Q2', '2005Q1', '2008Q1', '2023Q1', '2017Q1',
+  '2014Q1', '2026Q1', '2026Q2', '2017Q5', '2016Q8', '2018Q5', '2013Q3',
+  '2000Q8', '2006Q9', '2018Q2', '2022Q8', '2020Q12', '2019Q17',
+];
+
+export const encounters = levelOrder.map(id => {
+  const encounter = encountersById.get(id);
+  if (!encounter) throw new Error(`Missing Monster Challenge level ${id}`);
+  return encounter;
+});

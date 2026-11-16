@@ -1,12 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { choiceKeys, encounters } from '../data/monster-challenge';
-import { questionById, questionUrl, sectionUrl, sections } from '../lib/content';
+import { encounters } from '../data/monster-challenge';
+import { choiceKeys } from '../data/monster-challenge-types';
+import { questionById, questionUrl, sectionUrl, sections, url } from '../lib/content';
 import '../styles/monster-challenge.css';
 
 const section = sections.find(item => item.id === '1.1')!;
 const sectionLink = sectionUrl(section);
 const sources = Object.fromEntries(encounters.map(({ sourceId }) => [sourceId, questionUrl(questionById.get(sourceId)!)]));
+const figures = Object.fromEntries(encounters.flatMap(({ sourceId, figure }) => figure ? [[sourceId, url(figure.source)]] : []));
+const totalSteps = encounters.reduce((total, level) => total + level.steps.length, 0);
 const directions = [
   { key: 'up', arrow: '↑', label: 'Move up' },
   { key: 'left', arrow: '←', label: 'Move left' },
@@ -16,7 +19,7 @@ const directions = [
 ---
 
 <Layout title="Monster Challenge">
-  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)}>
+  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)} data-figures={JSON.stringify(figures)}>
     <a class="monster-back" href={sectionLink}><span aria-hidden="true">←</span> Back to Section 1.1</a>
     <header class="monster-heading">
       <div>
@@ -48,7 +51,7 @@ const directions = [
         </div>
       </div>
       <div class="monster-intro-copy">
-        <h2 id="monster-intro-title">Three monsters to defeat</h2>
+        <h2 id="monster-intro-title">{encounters.length} monsters to defeat</h2>
         <p>Each math step unlocks one layer of armor. Read the question, pick an answer, then hold your shot on its matching target.</p>
         <ul>
           <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
@@ -65,9 +68,14 @@ const directions = [
         <h2 data-field="strategy"></h2>
         <p class="monster-stem" data-field="stem"></p>
         <p class="challenge-zh" lang="zh" data-field="stem-zh" hidden></p>
+        <button type="button" class="question-image-button monster-figure" data-level-figure aria-label="Enlarge question figure" aria-describedby="monster-figure-description" hidden>
+          <img data-level-figure-image alt="" />
+        </button>
+        <p class="sr-only" id="monster-figure-description" hidden></p>
+        <table class="monster-number-grid" data-level-grid aria-label="Number array from the question" hidden><tbody></tbody></table>
         <ol class="monster-unlocked" data-results aria-label="Steps completed"></ol>
         <div class="monster-step" aria-label="Current step">
-          <span>Step <span data-field="step">1</span> of 3</span>
+          <span>Step <span data-field="step">1</span> of <span data-field="step-total">{encounters[0].steps.length}</span></span>
         </div>
         <h3 class="monster-prompt" data-field="prompt" tabindex="-1"></h3>
         <p class="challenge-zh" lang="zh" data-field="prompt-zh" hidden></p>
@@ -89,7 +97,7 @@ const directions = [
       <div class="monster-field">
         <div class="monster-hud">
           <div class="monster-hud-foe">
-            <span class="monster-hud-count">Monster <span data-field="encounter">1</span> of 3</span>
+            <span class="monster-hud-count">Level <span data-field="encounter">1</span> of {encounters.length}</span>
             <strong data-field="monster"></strong>
           </div>
           <div class="monster-hud-end">
@@ -150,7 +158,7 @@ const directions = [
 
     <section class="monster-summary" data-panel="summary" aria-labelledby="monster-summary-title" tabindex="-1" hidden>
       <h2 id="monster-summary-title">Challenge complete</h2>
-      <p><strong class="monster-score" data-field="score">0 / 9</strong> steps correct on the first try</p>
+      <p><strong class="monster-score" data-field="score">0 / {totalSteps}</strong> steps correct on the first try</p>
       <div class="monster-summary-list">
         {encounters.map(({ sourceId }) => (
           <details data-review-card={sourceId}>
