@@ -3,10 +3,25 @@ import { choiceKeys, encounters, type ChoiceKey, type Localized } from '../data/
 type Phase = 'intro' | 'approach' | 'question' | 'breaking' | 'counter' | 'empty' | 'step-cleared' | 'review' | 'summary';
 type Point = { x: number; y: number };
 type Direction = 'up' | 'left' | 'down' | 'right';
+type AttackSite = { aim: Point; origin: Point; remaining: number };
+type Attack = (AttackSite & { stage: 'warning' }) | (AttackSite & { stage: 'impact'; hit: boolean });
 
 const chargeDuration = 2000;
 const maxShields = 3;
 const timings = { approach: 1200, counter: 550, 'step-cleared': 450 };
+const attackTimings = [
+  { first: 3700, repeat: 3350, warning: 1400 },
+  { first: 3100, repeat: 2850, warning: 1250 },
+  { first: 2700, repeat: 2350, warning: 1150 },
+];
+const projectileTravel = 360;
+const attackImpact = 380;
+const attackMessages = {
+  idle: { en: 'Move when the warning ring appears.', zh: '警示圈出现时，移动躲开。' },
+  warning: { en: 'Move out of the ring!', zh: '快移出警示圈！' },
+  hit: { en: 'Hit! You lost a shield.', zh: '被击中了！护盾减少一格。' },
+  dodged: { en: 'Dodged!', zh: '躲开了！' },
+};
 const initialPosition = { x: 20, y: 76 };
 const directionByKey: Record<string, Direction | undefined> = {
   w: 'up', a: 'left', s: 'down', d: 'right',
@@ -33,6 +48,11 @@ function mountChallenge(root: HTMLElement) {
   const action = (name: string) => find<HTMLButtonElement>(`[data-action="${name}"]`);
   const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'));
   const arena = find('[data-arena]');
+  const attackMarker = find('[data-attack-marker]');
+  const attackEmitter = find('[data-attack-emitter]');
+  const attackProjectile = find('[data-attack-projectile]');
+  const attackStatus = find('[data-attack-status]');
+  const attackStatusZh = find('[data-attack-status-zh]');
   const player = find('[data-player]');
   const muzzle = player.querySelector('[data-muzzle]') ?? player;
   const beam = find<SVGSVGElement>('[data-beam]');
@@ -66,6 +86,9 @@ function mountChallenge(root: HTMLElement) {
   let firingPointer: number | null = null;
   let keyboardFiring = false;
   let miss: { point: Point; time: number } | null = null;
+  let attack: Attack | null = null;
+  let attackDelay = 0;
+  let attackMessage: keyof typeof attackMessages = 'idle';
   let phaseTime = 0;
   let frameId = 0;
   let lastFrame = 0;
@@ -78,6 +101,11 @@ function mountChallenge(root: HTMLElement) {
 
   function setText(element: Element, text: string) {
     if (element.textContent !== text) element.textContent = text;
+  }
+
+  function renderShields() {
+    root.dataset.shields = String(shields);
+    setText(field('shields'), String(shields));
   }
 
   function showTranslation(name: string, value: Localized | null) {
@@ -113,11 +141,11 @@ function mountChallenge(root: HTMLElement) {
     const active = phase === 'question' || phase === 'breaking';
 
     arena.dataset.monster = String(encounterIndex);
-    root.dataset.shields = String(shields);
     root.dataset.cleared = String(cleared);
+    renderShields();
+    renderAttack();
     setText(field('encounter'), String(encounterIndex + 1));
     setText(field('step'), String(stepIndex + 1));
-    setText(field('shields'), String(shields));
     setText(field('monster'), encounter.monster.en);
     const strategy = field('strategy');
     strategy.replaceChildren(...(cleared ? localizedNodes(encounter.title) : []));
@@ -127,7 +155,7 @@ function mountChallenge(root: HTMLElement) {
     showTranslation('feedback', feedback);
     const feedbackField = field('feedback');
     feedbackField.hidden = !feedback;
-    feedbackField.dataset.kind = phase === 'breaking' || phase === 'step-cleared' ? 'correct' : 'wrong';
+    feedbackField.dataset.kind = struck === step.correct || phase === 'step-cleared' ? 'correct' : 'wrong';
     setList(results, encounter.steps.slice(0, cleared).map(item => item.unlocked));
     recover.hidden = phase !== 'empty';
     chargeDisplay.hidden = phase !== 'breaking';
@@ -192,6 +220,7 @@ function mountChallenge(root: HTMLElement) {
     charge = 0;
     keyboardFiring = false;
     resetInput();
+    resetAttack();
     changePhase('approach');
     drawPlayer();
     if (!frameId) frameId = requestAnimationFrame(tick);
@@ -219,6 +248,7 @@ function mountChallenge(root: HTMLElement) {
       if (!right) {
         shields -= 1;
         feedback = step.options[key].hint ?? null;
+        resetAttack();
         changePhase('counter');
         return true;
       }
@@ -234,6 +264,104 @@ function mountChallenge(root: HTMLElement) {
   function center(element: Element): Point {
     const { x, y, width, height } = element.getBoundingClientRect();
     return { x: x + width / 2, y: y + height / 2 };
+  }
+
+  function attackRadius(width: number, height: number) {
+    return Math.max(25, Math.min(width, height) * .14);
+  }
+
+  function sizeAttackMarker() {
+    const { width, height } = arena.getBoundingClientRect();
+    attackMarker.style.setProperty('--attack-size', `${attackRadius(width, height) * 2}px`);
+  }
+
+  function renderAttack() {
+    attackMarker.hidden = attack === null;
+    if (attack) arena.dataset.attack = attack.stage;
+    else delete arena.dataset.attack;
+    if (attack?.stage === 'impact' && attack.hit) root.dataset.playerHit = 'true';
+    else delete root.dataset.playerHit;
+    const message = attackMessages[attackMessage];
+    setText(attackStatus, message.en);
+    setText(attackStatusZh, showChinese ? message.zh : '');
+    attackStatusZh.hidden = !showChinese;
+  }
+
+  function resetAttack() {
+    attack = null;
+    attackDelay = attackTimings[encounterIndex].first;
+    attackMessage = 'idle';
+    attackProjectile.hidden = true;
+    renderAttack();
+  }
+
+  function beginWarning() {
+    const bounds = arena.getBoundingClientRect();
+    const emitter = center(attackEmitter);
+    attack = {
+      stage: 'warning',
+      aim: { ...position },
+      origin: { x: (emitter.x - bounds.x) * 100 / bounds.width, y: (emitter.y - bounds.y) * 100 / bounds.height },
+      remaining: attackTimings[encounterIndex].warning,
+    };
+    attackMarker.style.setProperty('--attack-x', `${attack.aim.x}%`);
+    attackMarker.style.setProperty('--attack-y', `${attack.aim.y}%`);
+    sizeAttackMarker();
+    attackMessage = 'warning';
+    renderAttack();
+  }
+
+  function drawProjectile(warning: AttackSite) {
+    const progress = 1 - warning.remaining / projectileTravel;
+    const x = warning.origin.x + (warning.aim.x - warning.origin.x) * progress;
+    const y = warning.origin.y + (warning.aim.y - warning.origin.y) * progress;
+    attackProjectile.style.setProperty('--projectile-x', `${x}%`);
+    attackProjectile.style.setProperty('--projectile-y', `${y}%`);
+    attackProjectile.hidden = false;
+  }
+
+  function resolveAttack(warning: AttackSite) {
+    const { width, height } = arena.getBoundingClientRect();
+    const dx = (position.x - warning.aim.x) * width / 100;
+    const dy = (position.y - warning.aim.y) * height / 100;
+    const hit = Math.hypot(dx, dy) <= attackRadius(width, height);
+    attack = { ...warning, stage: 'impact', remaining: attackImpact, hit };
+    attackProjectile.hidden = true;
+    attackMessage = hit ? 'hit' : 'dodged';
+    renderAttack();
+    if (!hit) return;
+
+    shields -= 1;
+    if (shields) {
+      renderShields();
+      return;
+    }
+    keyboardFiring = false;
+    resetInput();
+    changePhase('empty');
+    if (document.activeElement?.matches('[data-target]')) recover.focus({ preventScroll: true });
+  }
+
+  function advanceAttack(elapsed: number) {
+    if (attack?.stage === 'impact') {
+      attack.remaining -= elapsed;
+      if (attack.remaining <= 0) {
+        attack = null;
+        attackDelay = attackTimings[encounterIndex].repeat;
+        renderAttack();
+      }
+      return;
+    }
+    if (phase !== 'question' && phase !== 'breaking') return;
+    if (!attack) {
+      attackDelay -= elapsed;
+      if (attackDelay <= 0) beginWarning();
+      return;
+    }
+
+    attack.remaining -= elapsed;
+    if (attack.remaining <= 0) resolveAttack(attack);
+    else if (attack.remaining <= projectileTravel) drawProjectile(attack);
   }
 
   function drawBeam(target: Point | Element, kind: 'shot' | 'counter') {
@@ -295,6 +423,7 @@ function mountChallenge(root: HTMLElement) {
     } else if (phase === 'step-cleared' && phaseTime >= timings['step-cleared']) {
       if (stepIndex === currentEncounter().steps.length - 1) {
         resetInput();
+        resetAttack();
         changePhase('review');
         field('review-title').focus();
         return;
@@ -302,10 +431,12 @@ function mountChallenge(root: HTMLElement) {
       stepIndex += 1;
       charge = 0;
       struck = null;
+      attackDelay = Math.max(1200, attackDelay);
       changePhase('question');
       if (document.activeElement?.matches('[data-target]')) prompt.focus({ preventScroll: true });
     }
 
+    advanceAttack(elapsed);
     if (miss) {
       miss.time -= elapsed;
       if (miss.time <= 0) miss = null;
@@ -337,7 +468,10 @@ function mountChallenge(root: HTMLElement) {
   recover.addEventListener('click', () => {
     if (phase !== 'empty') return;
     shields = maxShields;
-    changePhase('question');
+    resetAttack();
+    const resumeShot = struck === currentStep().correct;
+    if (resumeShot) feedback = correctFeedback;
+    changePhase(resumeShot ? 'breaking' : 'question');
     prompt.focus({ preventScroll: true });
   });
   language.addEventListener('click', () => {
@@ -395,6 +529,9 @@ function mountChallenge(root: HTMLElement) {
     if (!event.repeat) keyMoves.set(key, direction);
   });
   window.addEventListener('keyup', event => keyMoves.delete(event.key.toLowerCase()));
+  window.addEventListener('resize', () => {
+    if (attack) sizeAttackMarker();
+  });
   window.addEventListener('blur', () => {
     blurred = true;
     resetInput();

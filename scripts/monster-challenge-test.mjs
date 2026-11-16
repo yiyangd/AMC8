@@ -24,6 +24,8 @@ function challenge(page) {
     state: name => expect(root).toHaveAttribute('data-state', name),
     charge: root.locator('[data-charge]'),
     player: root.locator('[data-player]'),
+    arena: root.locator('[data-arena]'),
+    attackMarker: root.locator('[data-attack-marker]'),
   };
 }
 
@@ -80,6 +82,37 @@ async function atQuestion(game, encounter, step, shields) {
   await expect(game.field('encounter')).toHaveText(String(encounter));
   await expect(game.field('step')).toHaveText(String(step));
   await expect(game.field('shields')).toHaveText(String(shields));
+}
+
+async function withAutomaticDodging(page, game, play) {
+  let finished = false;
+  await Promise.all([
+    (async () => {
+      try {
+        await play();
+      } finally {
+        finished = true;
+      }
+    })(),
+    (async () => {
+      let heldKey;
+      try {
+        while (!finished) {
+          const warning = await game.arena.getAttribute('data-attack') === 'warning';
+          if (warning && !heldKey) {
+            heldKey = await playerAxis(game, 'x') < 50 ? 'd' : 'a';
+            await page.keyboard.down(heldKey);
+          } else if (!warning && heldKey) {
+            await page.keyboard.up(heldKey);
+            heldKey = undefined;
+          }
+          if (!finished) await new Promise(resolve => setTimeout(resolve, 40));
+        }
+      } finally {
+        if (heldKey) await page.keyboard.up(heldKey);
+      }
+    })(),
+  ]);
 }
 
 async function emptyShot(page, game) {
@@ -160,8 +193,7 @@ async function verifyReview(page, game, sourceId) {
   assert((await response.text()).includes(`id="${anchor}"`), `${sourceId} workbook section must contain the source question`);
 }
 
-async function inspectDesktop(page) {
-  const game = await open(page, true);
+async function inspectDesktop(page, game) {
   await game.action('start').click();
   await game.state('approach');
   await moveWithKeyboard(page, game, 'd', 'x', 1);
@@ -176,14 +208,13 @@ async function inspectDesktop(page) {
   await expect(game.field('stem-zh')).toContainText(/\S/);
   await expect(game.field('prompt-zh')).toBeVisible();
 
-  // Deliberately leave the question alone to detect a reading timer or unsolicited attack.
-  await page.waitForTimeout(2500);
+  await expect(game.attackMarker).toBeHidden();
   await atQuestion(game, 1, 1, 3);
   await emptyShot(page, game);
   await expect(game.root.locator('[data-beam]')).toHaveAttribute('data-kind', 'shot');
   await atQuestion(game, 1, 1, 3);
   await expect(game.charge).toHaveJSProperty('value', 0);
-  console.log('PASS Section 1.1 entry, movement, translation, unhurried reading and harmless empty shot');
+  console.log('PASS Section 1.1 entry, movement, translation, initial reading grace and harmless empty shot');
 
   await wrongHit(page, game, 'A', 2, true);
   await expect(game.root.locator('[data-beam]')).toHaveAttribute('data-kind', 'counter');
@@ -263,6 +294,68 @@ async function inspectDesktop(page) {
   console.log('PASS recovery preserves the current step, all nine choices resolve and every workbook source is linked');
 }
 
+async function expectAttackWarning(game) {
+  await expect(game.arena).toHaveAttribute('data-attack', 'warning', { timeout: 10000 });
+  await expect(game.attackMarker).toBeVisible();
+}
+
+async function inspectActiveAttacks(page) {
+  const game = await open(page);
+  await game.action('start').click();
+  await atQuestion(game, 1, 1, 3);
+  await expect(game.attackMarker).toBeHidden();
+  await expectAttackWarning(game);
+  await atQuestion(game, 1, 1, 3);
+  await expect(game.root.locator('[data-attack-status]')).toContainText(/\S/);
+  await setPageHidden(page, true);
+  await page.waitForTimeout(1500);
+  await expect(game.arena).toHaveAttribute('data-attack', 'warning');
+  await expect(game.field('shields')).toHaveText('3');
+  await setPageHidden(page, false);
+  await expect(game.field('shields')).toHaveText('2');
+  await expect(game.attackMarker).toBeHidden();
+  await atQuestion(game, 1, 1, 2);
+
+  await expectAttackWarning(game);
+  const lockedX = await game.attackMarker.evaluate(marker => marker.style.getPropertyValue('--attack-x'));
+  const initialX = await playerAxis(game, 'x');
+  await mouseDown(page, game.target('B'));
+  await game.state('breaking');
+  await page.keyboard.down('d');
+  try {
+    await expect.poll(() => playerAxis(game, 'x'), { intervals: [50, 100] }).toBeGreaterThan(initialX + 17);
+    assert.equal(await game.attackMarker.evaluate(marker => marker.style.getPropertyValue('--attack-x')), lockedX,
+      'The attack must stay aimed at the warning location when the player moves');
+    await page.waitForFunction(() => document.querySelector('[data-arena]')?.dataset.attack === 'impact', null,
+      { timeout: 3500 });
+    await expect(game.field('shields')).toHaveText('2');
+    await expect.poll(() => readCharge(game)).toBeGreaterThan(600);
+  } finally {
+    await page.keyboard.up('d');
+  }
+  await finishStep(game, 1, 1, 2);
+  await page.mouse.up();
+  console.log('PASS warnings precede damage, stationary players lose one shield, and moving while charging dodges the same attack');
+
+  await wrongHit(page, game, 'B', 1);
+  await atQuestion(game, 1, 2, 1);
+  await mouseDown(page, game.target('A'));
+  await game.state('breaking');
+  await expect.poll(() => readCharge(game)).toBeGreaterThan(250);
+  await page.mouse.up();
+  const savedCharge = await readCharge(game);
+  await expectAttackWarning(game);
+  await game.state('empty');
+  await expect(game.field('shields')).toHaveText('0');
+  await expect(game.field('step')).toHaveText('2');
+  await game.action('recover').click();
+  await game.state('breaking');
+  await expect(game.field('shields')).toHaveText('3');
+  assert.equal(await readCharge(game), savedCharge, 'Recovering from an active attack must retain armor damage');
+  await breakWithMouse(page, game, 1, 2, 3);
+  console.log('PASS the last shield can break between shots, and recovery restores the same locked answer and charge');
+}
+
 async function tabTo(page, control) {
   for (let tabCount = 0; tabCount < 35; tabCount++) {
     if (await control.evaluate(element => element === document.activeElement)) return;
@@ -271,8 +364,7 @@ async function tabTo(page, control) {
   await expect(control).toBeFocused();
 }
 
-async function inspectKeyboard(page) {
-  const game = await open(page);
+async function inspectKeyboard(page, game) {
   await tabTo(page, game.action('start'));
   await page.keyboard.press('Enter');
   await atQuestion(game, 1, 1, 3);
@@ -313,20 +405,36 @@ async function inspectTouch(context, page) {
   const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
   assert(noOverflow, 'Mobile challenge should fit the viewport');
 
-  await touchStart(game.target('B'));
+  const moveButton = game.root.locator('[data-move="right"]');
+  await moveButton.scrollIntoViewIfNeeded();
+  const shotPoint = await center(game.target('B'));
+  const movePoint = await center(moveButton);
+  await expectAttackWarning(game);
+  const warningX = await playerAxis(game, 'x');
+  await device.send('Input.dispatchTouchEvent', {
+    type: 'touchStart',
+    touchPoints: [{ ...movePoint, id: 1 }, { ...shotPoint, id: 2 }],
+  });
   await game.state('breaking');
+  await expect.poll(() => playerAxis(game, 'x')).toBeGreaterThan(warningX + 17);
   await finishStep(game, 1, 1, 3);
   await touchEnd();
-  console.log('PASS mobile touch movement, readable layout and hold-to-break');
+  console.log('PASS mobile touch movement, readable layout, and two-finger dodge while holding a shot');
 }
 
 try {
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await inspectDesktop(desktop);
+  const desktopGame = await open(desktop, true);
+  await withAutomaticDodging(desktop, desktopGame, () => inspectDesktop(desktop, desktopGame));
   await desktop.close();
 
+  const dodge = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  await inspectActiveAttacks(dodge);
+  await dodge.close();
+
   const keyboard = await browser.newPage({ viewport: { width: 1280, height: 900 } });
-  await inspectKeyboard(keyboard);
+  const keyboardGame = await open(keyboard);
+  await withAutomaticDodging(keyboard, keyboardGame, () => inspectKeyboard(keyboard, keyboardGame));
   await keyboard.close();
 
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });

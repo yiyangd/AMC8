@@ -53,7 +53,8 @@ const directions = [
         <ul>
           <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
           <li><strong>Aim</strong> at A, B, or C. With a keyboard, tab to a target and press Enter.</li>
-          <li><strong>Try again</strong> if a wrong shot costs you a shield. Take as long as you need to read.</li>
+          <li><strong>Dodge</strong> when the monster marks a ring under you. Keep moving even while you shoot.</li>
+          <li><strong>Try again</strong> if a wrong answer or a hit costs you a shield.</li>
         </ul>
         <button type="button" class="monster-button monster-button--primary" data-action="start">Start challenge <span aria-hidden="true">→</span></button>
       </div>
@@ -98,8 +99,13 @@ const directions = [
             </span>
           </div>
         </div>
+        <p class="monster-attack-status" role="status" aria-atomic="true">
+          <span data-attack-status>Watch for the warning ring.</span>
+          <span data-attack-status-zh lang="zh" hidden></span>
+        </p>
         <div class="monster-arena" data-arena data-monster="0" aria-label="Arena">
           <div class="monster-platform"></div>
+          <div class="monster-attack-marker" data-attack-marker aria-hidden="true" hidden></div>
           <div class="monster-player" data-player aria-hidden="true">
             <span class="monster-player-body"></span>
             <span class="monster-player-helmet"></span>
@@ -111,11 +117,12 @@ const directions = [
             <div class="monster-claw monster-claw--left"></div>
             <div class="monster-claw monster-claw--right"></div>
             <div class="monster-hull"></div>
-            <div class="monster-eyeplate"><i></i><i></i><i></i></div>
+            <div class="monster-eyeplate" data-attack-emitter><i></i><i></i><i></i></div>
             <div class="monster-targets" role="group" aria-label="Shoot an answer target">
               {choiceKeys.map(choice => <button type="button" class="monster-target" data-target={choice} aria-label={`Target ${choice}`} aria-describedby={`monster-option-${choice}`} aria-disabled="true" hidden>{choice}</button>)}
             </div>
           </div>
+          <div class="monster-attack-projectile" data-attack-projectile aria-hidden="true" hidden></div>
           <svg class="monster-beam" data-beam viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
             <line data-beam-line x1="0" y1="0" x2="0" y2="0"></line>
           </svg>
