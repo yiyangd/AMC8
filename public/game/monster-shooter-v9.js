@@ -106,7 +106,7 @@
     reference: $('q-reference'), now: $('q-now'), heading: $('q-heading'), badge: $('q-badge'), prompt: $('q-prompt'), options: $('q-options'), feedback: $('q-feedback'),
     figure: $('q-figure'), figurePreview: $('q-figure-image'), grid: $('q-grid'),
     figureDialog: $('figure-dialog'), figureImage: $('figure-image'), figureCaption: $('figure-caption'),
-    historySlot: $('history-slot'), history: $('run-history'), historyList: $('run-history-list'), historyEmpty: $('history-empty'),
+    historySlot: $('history-slot'), history: $('run-history'), historyList: $('run-history-list'),
     historyToggle: $('history-toggle'), historyDialog: $('history-dialog'),
   };
   const ov = { intro: $('ov-intro'), review: $('ov-review'), down: $('ov-down'), summary: $('ov-summary') };
@@ -281,7 +281,7 @@
     ENC = section.encounters;
     audio.ensure();
     S.stats = newStats(); S.hearts = CFG.maxHearts; S.score = 0; S.runStart = performance.now();
-    renderHistory();
+    el.historyList.scrollTop = 0;
     startEncounter(0);
   }
 
@@ -295,6 +295,7 @@
     Object.assign(player, { x: W / 2, y: 495, stun: 0, inv: 0, kx: 0, ky: 0 });
     S.banner = { text: enc().monster.boss ? 'BOSS' : `MONSTER ${index + 1} / ${ENC.length}`, sub: enc().monster.name.en, t: 0, dur: 1.7 };
     setScreen('play'); setPhase('enter'); renderCard();
+    renderHistory();
     el.card.scrollTop = 0;
     el.reference.scrollTop = 0;
     sfx.roar();
@@ -307,7 +308,7 @@
     for (const p of pods) { p.state = 'idle'; p.grow = 0; p.flash = 0; }
     setLabels();
     setPhase('rearm'); renderCard();
-    revealInCard(el.badge, true);
+    revealInScrollArea(el.card, el.badge, true);
     attention(el.heading, 'new');
   }
 
@@ -347,13 +348,15 @@
   function renderHistory() {
     el.historyList.innerHTML = ENC.map((e, i) => {
       const { stars } = S.stats[i];
-      if (!stars) return '';
-      return `<li data-source-id="${esc(e.id)}"><span class="history-question">${e.year} · Q${e.number}</span><span class="history-stars" role="img" aria-label="${stars} of 3 stars">${starsHtml(stars)}</span></li>`;
+      const current = i === S.ei && !stars ? ' aria-current="step"' : '';
+      const rating = stars ? `<span class="history-stars" role="img" aria-label="${stars} of 3 stars">${starsHtml(stars)}</span>` : '';
+      return `<li data-source-id="${esc(e.id)}"${current}><span class="history-question">${e.year} · Q${e.number}</span>${rating}</li>`;
     }).join('');
-    const hasClears = el.historyList.childElementCount > 0;
-    el.historyEmpty.hidden = hasClears;
-    el.historyList.tabIndex = hasClears ? 0 : -1;
-    el.historyList.scrollTop = el.historyList.scrollHeight;
+    revealHistoryRow();
+  }
+
+  function revealHistoryRow() {
+    revealInScrollArea(el.historyList, el.historyList.children[S.ei]);
   }
 
   function showSummary() {
@@ -409,7 +412,7 @@
     S.lastHint = S.feedback;
     sfx.wrong();
     setPhase('counter'); renderCard();
-    revealInCard(el.feedback);
+    revealInScrollArea(el.card, el.feedback);
     attention(el.card, 'wrong');
   }
 
@@ -426,7 +429,7 @@
     S.orbTimer = CFG.orbGrace; S.orbTurn = 0;
     sfx.lock();
     setPhase('break'); renderCard();
-    revealInCard(view.stacked ? el.options.querySelector('.is-locked') : el.feedback);
+    revealInScrollArea(el.card, view.stacked ? el.options.querySelector('.is-locked') : el.feedback);
   }
 
   function damage(p, b) {
@@ -1106,15 +1109,14 @@
     for (const li of el.options.children) li.classList.toggle('is-hover', li.dataset.k === S.hoverKey);
   }
 
-  /* Scroll within the card just enough to show the relevant content. */
-  function revealInCard(node, alignStart = false) {
-    const card = el.card;
-    if (!node || card.scrollHeight <= card.clientHeight) return;
+  /* Scroll just enough to show the relevant item without moving the page. */
+  function revealInScrollArea(area, node, alignStart = false) {
+    if (!node || area.scrollHeight <= area.clientHeight) return;
     const bounds = node.getBoundingClientRect();
-    const top = card.getBoundingClientRect().top + card.clientTop;
-    const bottom = top + card.clientHeight;
-    if (alignStart || bounds.top < top || bounds.height > card.clientHeight) card.scrollTop += bounds.top - top;
-    else if (bounds.bottom > bottom) card.scrollTop += bounds.bottom - bottom;
+    const top = area.getBoundingClientRect().top + area.clientTop;
+    const bottom = top + area.clientHeight;
+    if (alignStart || bounds.top < top || bounds.height > area.clientHeight) area.scrollTop += bounds.top - top;
+    else if (bounds.bottom > bottom) area.scrollTop += bounds.bottom - bottom;
   }
 
   /* On stacked screens, lead with the step when the reference would push it out of view. */
@@ -1378,12 +1380,12 @@
     el.historyDialog.append(el.history);
     el.historyDialog.showModal();
     el.historyToggle.setAttribute('aria-expanded', 'true');
-    el.historyList.scrollTop = el.historyList.scrollHeight;
+    revealHistoryRow();
   });
   el.historyDialog.addEventListener('close', () => {
     el.historySlot.append(el.history);
     el.historyToggle.setAttribute('aria-expanded', 'false');
-    el.historyList.scrollTop = el.historyList.scrollHeight;
+    revealHistoryRow();
     clearInput();
   });
 

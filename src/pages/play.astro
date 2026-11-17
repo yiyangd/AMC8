@@ -70,11 +70,11 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .history-slot .run-history { padding: .65em .8em; border: 1px solid var(--line); border-radius: 12px; background: rgba(9, 15, 36, .92); font-size: clamp(12px, calc(12px * var(--u)), 16px); }
   .history-slot .history-list { max-height: calc(190px * var(--u)); }
   .run-history h2 { margin: 0 0 .4em; font-size: 1em; line-height: 1.35; }
-  .history-empty { margin: 0; color: var(--muted); font-size: .9em; }
   .history-list { margin: 0; padding: 0 .15em; list-style: none; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; font-variant-numeric: tabular-nums; }
   .history-list:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
   .history-list li { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding: .35em 0; white-space: nowrap; }
   .history-list li + li { border-top: 1px solid var(--line); }
+  .history-list li[aria-current="step"] .history-question { color: var(--a); font-weight: 700; }
   .history-stars { color: var(--gold); letter-spacing: .08em; }
   .history-stars .off { color: #73839d; }
   #app:not([data-screen="play"]) #history-toggle, .stage[data-side-history] #history-toggle { display: none; }
@@ -227,9 +227,8 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
         </div>
         <div class="history-slot" id="history-slot">
           <aside class="run-history" id="run-history" aria-labelledby="run-history-title">
-            <h2 id="run-history-title">Cleared monsters<span class="zh" lang="zh">已击败的怪兽</span></h2>
-            <p class="history-empty" id="history-empty">No clears yet<span class="zh" lang="zh">本轮还没有击败怪兽</span></p>
-            <ol class="history-list" id="run-history-list" tabindex="-1"></ol>
+            <h2 id="run-history-title">Question progress<span class="zh" lang="zh">题目进度</span></h2>
+            <ol class="history-list" id="run-history-list" tabindex="0"></ol>
           </aside>
         </div>
       </div>
@@ -356,6 +355,6 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 </div>
 
 <script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
-<script is:inline src={url('game/monster-shooter-v9.js?v=3')}></script>
+<script is:inline src={url('game/monster-shooter-v9.js?v=4')}></script>
 </body>
 </html>

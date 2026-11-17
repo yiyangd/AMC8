@@ -205,19 +205,33 @@ async function verifyReview(page, sectionId, sourceId, stepCount) {
   assert(checkedWorkbookHtml.get(link.pathname).includes('id="' + anchor + '"'), 'Workbook anchor missing for ' + sourceId);
 }
 
-async function expectHistory(page, entries) {
+async function expectHistory(page, sectionId, earnedEntries, currentId) {
+  const levels = levelsBySection[sectionId];
   const rows = page.locator('#run-history-list li');
-  await expect(rows).toHaveCount(entries.length);
-  const actual = await rows.evaluateAll(rows => rows.map(row => ({
-    id: row.dataset.sourceId,
-    label: row.querySelector('.history-question')?.textContent.trim(),
-    stars: row.querySelector('.history-stars')?.getAttribute('aria-label'),
-  })));
-  assert.deepEqual(actual, entries.map(([id, stars]) => ({
-    id,
-    label: id.replace('Q', ' · Q'),
-    stars: stars + ' of 3 stars',
-  })));
+  await expect(rows).toHaveCount(levels.length);
+  const { roster, current } = await rows.evaluateAll(rows => ({
+    roster: rows.map(row => {
+      const rating = row.querySelector('.history-stars');
+      return {
+        id: row.dataset.sourceId,
+        label: row.querySelector('.history-question')?.textContent.trim(),
+        stars: rating?.getAttribute('aria-label') ?? null,
+        hasStars: Boolean(rating) || /[★☆⭐]/u.test(row.textContent),
+      };
+    }),
+    current: rows.filter(row => row.getAttribute('aria-current') === 'step').map(row => row.dataset.sourceId),
+  }));
+  const earned = new Map(earnedEntries);
+  assert.deepEqual(roster, levels.map(([id]) => {
+    const stars = earned.get(id);
+    return {
+      id,
+      label: id.replace('Q', ' · Q'),
+      stars: stars ? stars + ' of 3 stars' : null,
+      hasStars: Boolean(stars),
+    };
+  }));
+  if (currentId !== undefined) assert.deepEqual(current, [currentId]);
 }
 
 async function expectWideHistory(page) {
@@ -256,7 +270,7 @@ async function playSection(page, sectionId) {
 
   for (const [index, [sourceId, answers]] of levels.entries()) {
     await advanceTo(page, 'think');
-    await expectHistory(page, history);
+    await expectHistory(page, sectionId, history, sourceId);
     await expect(page.locator('#q-source')).toContainText(new RegExp(sourceId.replace('Q', '.*Problem\\s+')));
     await verifyReference(page, sourceId);
     for (const [step, answer] of Array.from(answers).entries()) {
@@ -274,7 +288,7 @@ async function playSection(page, sectionId) {
     }
     await verifyReview(page, sectionId, sourceId, answers.length);
     history.push([sourceId, 3]);
-    await expectHistory(page, history);
+    await expectHistory(page, sectionId, history);
     await clickWhenReady(page, page.locator('#btn-next'));
   }
   const steps = levels.reduce((sum, [, answers]) => sum + answers.length, 0);
@@ -292,11 +306,12 @@ async function testRetry(page) {
   const [[firstId, firstAnswers], [retryId, retryAnswers], [thirdId, thirdAnswers]] = levelsBySection['1.1'];
   await clickWhenReady(page, startButton(page, '1.1'));
   await advanceTo(page, 'think');
-  await expectHistory(page, []);
+  await expectHistory(page, '1.1', [], firstId);
   await expectWideHistory(page);
+  assert.equal(await page.locator('#run-history-list').evaluate(list => list.scrollTop), 0);
   await completeEncounter(page, firstAnswers);
   const history = [[firstId, 3]];
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history);
   await clickWhenReady(page, page.locator('#btn-next'));
   await advanceTo(page, 'think');
   await expectWideHistory(page);
@@ -317,24 +332,24 @@ async function testRetry(page) {
   }
   await advanceTo(page, 'down');
   await expect(page.locator('#dn-hint')).toBeVisible();
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history);
   await clickWhenReady(page, page.locator('#btn-retry'));
   await advanceTo(page, 'think');
   assert.deepEqual(await page.evaluate(() => {
     const { S } = window.__shooter;
     return [S.ei, S.si, S.hearts, S.stats[1].retries];
   }), [1, 0, 5, 1]);
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history, retryId);
   await completeEncounter(page, retryAnswers);
   history.push([retryId, 1]);
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history);
   await clickWhenReady(page, page.locator('#btn-next'));
   await advanceTo(page, 'think');
   await shoot(page, ['A', 'B', 'C'].find(part => part !== thirdAnswers[0]), 'counter');
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history, thirdId);
   await completeEncounter(page, thirdAnswers);
   history.push([thirdId, 2]);
-  await expectHistory(page, history);
+  await expectHistory(page, '1.1', history);
   console.log('PASS incorrect answers, knockout and retry preserve history, with earned 3-, 1- and 2-star entries');
 }
 
@@ -356,6 +371,7 @@ async function inspectMobileReferences(page) {
 }
 
 async function inspectTouch(page) {
+  const [[sourceId, answers], [nextId]] = levelsBySection['1.1'];
   await openChooser(page);
   await page.locator('#btn-zh-intro').tap();
   await page.waitForFunction(() => performance.now() - window.__shooter.S.shownAt > 400);
@@ -364,6 +380,20 @@ async function inspectTouch(page) {
   await expect(page.locator('#app')).toHaveAttribute('data-layout', 'stacked');
   await verifyInitialPrompt(page, '2010Q1');
   await expect(page.locator('#q-stem .zh')).toBeVisible();
+
+  const historyToggle = page.locator('#history-toggle');
+  const historyList = page.locator('#run-history-list');
+  const historyDialog = page.locator('#history-dialog');
+  const closeHistory = historyDialog.getByRole('button', { name: /close/i });
+  await expect(historyToggle).toBeVisible();
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(historyList).toBeHidden();
+  await historyToggle.tap();
+  await expect(historyDialog.locator('#run-history-list')).toBeVisible();
+  await expectHistory(page, '1.1', [], sourceId);
+  assert.equal(await historyList.evaluate(list => list.scrollTop), 0);
+  await closeHistory.tap();
+  await expect(historyList).toBeHidden();
 
   const session = await page.context().newCDPSession(page);
   const touch = (type, ...touchPoints) => session.send('Input.dispatchTouchEvent', { type, touchPoints });
@@ -410,13 +440,9 @@ async function inspectTouch(page) {
   assert.deepEqual(await page.evaluate(() => [__shooter.input.rowKey, __shooter.input.stick]), [null, null]);
   console.log('PASS touch scrolling from options, hold to break, simultaneous joystick and fresh trigger on next step');
 
-  const [sourceId, answers] = levelsBySection['1.1'][0];
   await completeEncounter(page, answers.slice(1));
   await clickWhenReady(page, page.locator('#btn-next'));
   await advanceTo(page, 'think');
-  const historyToggle = page.locator('#history-toggle');
-  const historyList = page.locator('#run-history-list');
-  const historyDialog = page.locator('#history-dialog');
   await expect(historyToggle).toBeVisible();
   await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(historyList).toBeHidden();
@@ -424,7 +450,7 @@ async function inspectTouch(page) {
   await expect(historyToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(historyList).toBeVisible();
   await expect(historyDialog.locator('#run-history-list')).toBeVisible();
-  await expectHistory(page, [[sourceId, 3]]);
+  await expectHistory(page, '1.1', [[sourceId, 3]], nextId);
   await expect(historyList.locator('.history-stars')).toHaveAccessibleName('3 of 3 stars');
   assert(await page.evaluate(() => {
     const game = window.__shooter;
@@ -432,7 +458,7 @@ async function inspectTouch(page) {
     game.advance(2);
     return game.S.phaseT === time;
   }), 'History dialog should pause the battle');
-  await historyDialog.getByRole('button', { name: /close/i }).tap();
+  await closeHistory.tap();
   await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
   await expect(historyList).toBeHidden();
   await historyToggle.press('Space');
@@ -440,7 +466,7 @@ async function inspectTouch(page) {
   await page.keyboard.press('Escape');
   await expect(historyDialog).toBeHidden();
   assert.deepEqual(await page.evaluate(() => [__shooter.S.ei, __shooter.S.phase, __shooter.S.hearts]), [1, 'think', 5]);
-  console.log('PASS compact history opens and closes without affecting the current encounter');
+  console.log('PASS compact roster shows all levels from the start and adds only earned stars');
 }
 
 try {
@@ -459,7 +485,7 @@ try {
     await playSection(page, '1.2');
     await clickWhenReady(page, page.locator('#btn-again'));
     await advanceTo(page, 'think');
-    await expectHistory(page, []);
+    await expectHistory(page, '1.2', [], '2012Q4');
     assert.deepEqual(await page.evaluate(() => {
       const { S, ENC } = window.__shooter;
       return [ENC[0].id, S.ei, S.si, S.hearts, S.score];
