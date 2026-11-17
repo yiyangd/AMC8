@@ -4,7 +4,7 @@ import { chromium, expect } from '@playwright/test';
 
 const origin = (process.env.TEST_ORIGIN || 'http://127.0.0.1:4321').replace(/\/$/, '');
 const challengeUrl = origin + '/AMC8/play/';
-const levelsBySection = {
+const originalLevels = {
   '1.1': [
     ['2010Q1', 'ACB'], ['2006Q2', 'BAC'], ['2025Q2', 'BCAB'], ['2005Q1', 'BAC'],
     ['2008Q1', 'CAB'], ['2023Q1', 'ABCA'], ['2017Q1', 'CABC'], ['2014Q1', 'ABC'],
@@ -20,6 +20,11 @@ const levelsBySection = {
 const workbook = JSON.parse(await readFile(new URL('../src/data/workbook.json', import.meta.url), 'utf8'));
 const sourceSections = new Map(workbook.sections.map(section => [section.id, section]));
 const sourceQuestions = new Map(workbook.questions.map(question => [question.id, question]));
+const numberTheorySections = ['4.1', '4.2', '4.3'];
+const levelsBySection = {
+  ...originalLevels,
+  ...Object.fromEntries(numberTheorySections.map(id => [id, sourceSections.get(id).questionIds.map(sourceId => [sourceId])])),
+};
 const sectionPath = id => '/AMC8/sections/' + sourceSections.get(id).slug + '/';
 const startButton = (page, id) => page.locator('[data-start-section="' + id + '"]');
 const keyForPart = { A: '1', B: '2', C: '3' };
@@ -33,8 +38,8 @@ for (const [id, levels] of Object.entries(levelsBySection)) {
   assert.deepEqual(levels.map(([sourceId]) => sourceId).sort(), [...sourceSections.get(id).questionIds].sort());
 }
 const allLevels = Object.values(levelsBySection).flat();
-assert.equal(allLevels.length, 26);
-assert.equal(allLevels.reduce((sum, [, answers]) => sum + answers.length, 0), 99);
+assert.equal(allLevels.length, 64);
+assert.equal(Object.values(originalLevels).flat().reduce((sum, [, answers]) => sum + answers.length, 0), 99);
 
 const browser = await chromium.launch({
   headless: true,
@@ -42,7 +47,7 @@ const browser = await chromium.launch({
 });
 const issues = [];
 const checkedWorkbookHtml = new Map();
-const figureQuestions = new Set(['2025Q2', '2000Q8']);
+const figureQuestions = new Set(['2025Q2', '2000Q8', '2006Q10']);
 const gridQuestion = '2026Q2';
 
 async function withPage(options, test) {
@@ -75,7 +80,7 @@ async function openChooser(page, fromSection) {
     await page.goto(challengeUrl);
   }
   await expectScreen(page, 'intro');
-  await expect(page.locator('[data-start-section]')).toHaveCount(2);
+  await expect(page.locator('[data-start-section]')).toHaveCount(Object.keys(levelsBySection).length);
   for (const id of Object.keys(levelsBySection)) {
     await expect(startButton(page, id)).toBeVisible();
     if (id === fromSection) await expect(startButton(page, id)).toHaveAttribute('aria-current', 'true');
@@ -255,7 +260,6 @@ async function completeEncounter(page, answers) {
 }
 
 async function playSection(page, sectionId) {
-  const levels = levelsBySection[sectionId];
   await clickWhenReady(page, startButton(page, sectionId));
   const history = [];
   const data = await page.evaluate(() => window.__shooter.ENC.map(encounter => ({
@@ -263,8 +267,11 @@ async function playSection(page, sectionId) {
     answer: encounter.steps.at(-1).options[encounter.steps.at(-1).correct].text.en,
     keys: encounter.steps.map(step => step.correct).join(''),
   })));
-  assert.deepEqual(data.map(({ sourceId, keys }) => [sourceId, keys]), levels);
-  for (const { sourceId, answer } of data) {
+  const levels = data.map(({ sourceId, keys }) => [sourceId, keys]);
+  assert.deepEqual(data.map(({ sourceId }) => sourceId), levelsBySection[sectionId].map(([sourceId]) => sourceId));
+  if (originalLevels[sectionId]) assert.deepEqual(levels, originalLevels[sectionId]);
+  for (const { sourceId, answer, keys } of data) {
+    assert.match(keys, /^[ABC]{3,5}$/, sourceId);
     assert.equal(normalizeAnswer(answer), normalizeAnswer(sourceQuestions.get(sourceId).answer.value), sourceId);
   }
 
@@ -357,7 +364,7 @@ async function inspectMobileReferences(page) {
   await openChooser(page);
   await page.locator('#btn-zh-intro').tap();
   await clickWhenReady(page, startButton(page, '1.1'));
-  const remaining = new Set([...figureQuestions, gridQuestion]);
+  const remaining = new Set(['2025Q2', '2000Q8', gridQuestion]);
   for (const [sourceId, answers] of levelsBySection['1.1']) {
     await advanceTo(page, 'think');
     if (remaining.delete(sourceId)) await verifyReference(page, sourceId);
@@ -490,6 +497,15 @@ try {
       const { S, ENC } = window.__shooter;
       return [ENC[0].id, S.ei, S.si, S.hearts, S.score];
     }), ['2012Q4', 0, 0, 5, 0]);
+  });
+  await withPage({ viewport: { width: 1440, height: 1000 } }, async page => {
+    await openChooser(page);
+    await page.locator('#btn-zh-intro').click();
+    for (const id of numberTheorySections) {
+      await playSection(page, id);
+      await clickWhenReady(page, page.locator('#btn-choose'));
+      await expectScreen(page, 'intro');
+    }
   });
   await withPage({ viewport: { width: 1600, height: 900 } }, testRetry);
   for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {

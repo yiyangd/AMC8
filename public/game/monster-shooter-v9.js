@@ -93,8 +93,10 @@
 
   const FRAC = /\[\[([^\]\/]+)\/([^\]]+)\]\]/g;
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
-  const fmt = s => esc(s).replace(FRAC, '<span class="frac"><span>$1</span><span>$2</span></span>');
-  const plain = s => String(s).replace(FRAC, '$1/$2');
+  const POWER = /\^\{(\d+)\}/g;
+  const SUPER_DIGITS = '⁰¹²³⁴⁵⁶⁷⁸⁹';
+  const fmt = s => esc(s).replace(FRAC, '<span class="frac"><span>$1</span><span>$2</span></span>').replace(POWER, '<sup>$1</sup>');
+  const plain = s => String(s).replace(FRAC, '$1/$2').replace(POWER, (_, digits) => digits.replace(/\d/g, digit => SUPER_DIGITS[Number(digit)]));
   // English line plus a Chinese help line; the help line is dropped when it would just repeat (plain numbers)
   const bi = o => `<span class="en">${fmt(o.en)}</span>${o.zh && o.zh !== o.en ? `<span class="zh" lang="zh">${fmt(o.zh)}</span>` : ''}`;
   const starsHtml = n => '★'.repeat(n) + `<span class="off">${'★'.repeat(3 - n)}</span>`;
