@@ -1,9 +1,10 @@
-import { encounters } from '../data/monster-challenge';
+import { challengeSections } from '../data/monster-challenge-sections';
 import { choiceKeys, type ChoiceKey, type Localized } from '../data/monster-challenge-types';
 
 type Phase = 'intro' | 'approach' | 'question' | 'breaking' | 'counter' | 'empty' | 'step-cleared' | 'review' | 'summary';
 type Point = { x: number; y: number };
 type Direction = 'up' | 'left' | 'down' | 'right';
+type ChallengeSection = (typeof challengeSections)[number];
 type AttackSite = { aim: Point; origin: Point; remaining: number };
 type Attack = (AttackSite & { stage: 'warning' }) | (AttackSite & { stage: 'impact'; hit: boolean });
 
@@ -48,6 +49,14 @@ function mountChallenge(root: HTMLElement) {
   const field = (name: string) => find(`[data-field="${name}"]`);
   const action = (name: string) => find<HTMLButtonElement>(`[data-action="${name}"]`);
   const panels = Array.from(root.querySelectorAll<HTMLElement>('[data-panel]'));
+  const sectionButtons = Array.from(root.querySelectorAll<HTMLButtonElement>('[data-start-section]'));
+  const reviewGroups = Array.from(root.querySelectorAll<HTMLElement>('[data-section-review]'));
+  const workbookLink = find<HTMLAnchorElement>('[data-workbook-link]');
+  const workbookHome = workbookLink.getAttribute('href')!;
+  const sectionLinks: Record<string, string> = JSON.parse(root.dataset.sectionLinks ?? '{}');
+  const requestedSectionId = new URLSearchParams(window.location.search).get('section');
+  const requestedSection = challengeSections.find(section => section.id === requestedSectionId);
+  const chooseSection = action('choose');
   const arena = find('[data-arena]');
   const attackMarker = find('[data-attack-marker]');
   const attackEmitter = find('[data-attack-emitter]');
@@ -81,11 +90,12 @@ function mountChallenge(root: HTMLElement) {
   const touchMoves = new Map<number, Direction>();
 
   let phase: Phase = 'intro';
+  let activeSection: ChallengeSection = challengeSections[0];
   let encounterIndex = 0;
   let stepIndex = 0;
   let shields = maxShields;
   let showChinese = false;
-  let firstChoices = encounters.map(() => new Map<number, boolean>());
+  let firstChoices: Map<number, boolean>[] = [];
   let position = { ...initialPosition };
   let feedback: Localized | null = null;
   let struck: ChoiceKey | null = null;
@@ -101,9 +111,9 @@ function mountChallenge(root: HTMLElement) {
   let lastFrame = 0;
   let blurred = false;
 
-  const currentEncounter = () => encounters[encounterIndex];
+  const currentEncounter = () => activeSection.levels[encounterIndex];
   const currentStep = () => currentEncounter().steps[stepIndex];
-  const attackTiming = () => attackTimings[Math.floor(encounterIndex * attackTimings.length / encounters.length)];
+  const attackTiming = () => attackTimings[Math.floor(encounterIndex * attackTimings.length / activeSection.levels.length)];
   const inArena = () => phase !== 'intro' && phase !== 'review' && phase !== 'summary';
   const paused = () => blurred || document.hidden || Boolean(document.querySelector('dialog[open]'));
 
@@ -177,7 +187,9 @@ function mountChallenge(root: HTMLElement) {
     root.toggleAttribute('data-final-armor', phase === 'step-cleared' && cleared === encounter.steps.length);
     renderShields();
     renderAttack();
+    setText(field('section-number'), activeSection.id);
     setText(field('encounter'), String(encounterIndex + 1));
+    setText(field('encounter-total'), String(activeSection.levels.length));
     setText(field('step'), String(stepIndex + 1));
     setText(field('step-total'), String(encounter.steps.length));
     setText(field('monster'), encounter.monster.en);
@@ -208,6 +220,12 @@ function mountChallenge(root: HTMLElement) {
 
   function render() {
     root.dataset.state = phase;
+    if (phase === 'intro') delete root.dataset.section;
+    else root.dataset.section = activeSection.id;
+    chooseSection.hidden = phase === 'intro';
+    const linkedSection = phase === 'intro' ? requestedSection : activeSection;
+    workbookLink.href = linkedSection ? sectionLinks[linkedSection.id] : workbookHome;
+    setText(field('workbook-back'), linkedSection ? `Back to Section ${linkedSection.id}` : 'Back to workbook');
     const visiblePanel = inArena() ? 'game' : phase;
     for (const panel of panels) panel.hidden = panel.dataset.panel !== visiblePanel;
     if (inArena()) renderGame();
@@ -219,13 +237,15 @@ function mountChallenge(root: HTMLElement) {
       setList(find('[data-review-steps]'), encounter.steps.map(step => step.explanation));
       reviewLink.href = sources[encounter.sourceId];
       reviewLink.textContent = `View original question · ${source}`;
-      next.textContent = encounterIndex < encounters.length - 1 ? 'Next monster' : 'Finish challenge';
+      next.textContent = encounterIndex < activeSection.levels.length - 1 ? 'Next monster' : 'Finish challenge';
     }
     if (phase === 'summary') {
       const correct = firstChoices.flatMap(row => [...row.values()]).filter(Boolean).length;
-      const total = encounters.reduce((sum, encounter) => sum + encounter.steps.length, 0);
+      const total = activeSection.levels.reduce((sum, encounter) => sum + encounter.steps.length, 0);
+      setText(field('summary-title'), `Section ${activeSection.id} complete`);
       setText(field('score'), `${correct} / ${total}`);
-      for (const encounter of encounters) {
+      for (const group of reviewGroups) group.hidden = group.dataset.sectionReview !== activeSection.id;
+      for (const encounter of activeSection.levels) {
         const card = find(`[data-review-card="${encounter.sourceId}"]`);
         card.querySelector('[data-card-title]')?.replaceChildren(...localizedNodes(encounter.title));
         const steps = card.querySelector('[data-card-steps]');
@@ -485,16 +505,31 @@ function mountChallenge(root: HTMLElement) {
     }
   }
 
-  function startRun() {
-    firstChoices = encounters.map(() => new Map<number, boolean>());
+  function startRun(section: ChallengeSection) {
+    activeSection = section;
+    firstChoices = section.levels.map(() => new Map<number, boolean>());
     startEncounter(0);
   }
 
-  action('start').addEventListener('click', startRun);
-  action('restart').addEventListener('click', startRun);
+  for (const button of sectionButtons) {
+    const section = challengeSections.find(item => item.id === button.dataset.startSection);
+    if (!section) continue;
+    button.toggleAttribute('data-recommended', section.id === requestedSection?.id);
+    button.addEventListener('click', () => startRun(section));
+  }
+  chooseSection.addEventListener('click', () => {
+    cancelAnimationFrame(frameId);
+    frameId = 0;
+    resetInput();
+    resetAttack();
+    keyboardFiring = false;
+    changePhase('intro');
+    sectionButtons.find(button => button.dataset.startSection === activeSection.id)?.focus();
+  });
+  action('restart').addEventListener('click', () => startRun(activeSection));
   next.addEventListener('click', () => {
     if (phase !== 'review') return;
-    if (encounterIndex < encounters.length - 1) startEncounter(encounterIndex + 1);
+    if (encounterIndex < activeSection.levels.length - 1) startEncounter(encounterIndex + 1);
     else {
       changePhase('summary');
       find('[data-panel="summary"]').focus();

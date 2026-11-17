@@ -11,10 +11,18 @@ const encounters = [
   ['2018Q5', 'BCAB'], ['2013Q3', 'ABCA'], ['2000Q8', 'BCAB'], ['2006Q9', 'BCAB'],
   ['2018Q2', 'ACBA'], ['2022Q8', 'CBAC'], ['2020Q12', 'CABA'], ['2019Q17', 'ABCA'],
 ].map(([sourceId, answers]) => ({ sourceId, answers }));
+const fractionEncounters = [
+  ['2012Q4', 'ACB'], ['2024Q2', 'CABA'], ['2000Q2', 'BCAB'],
+  ['2005Q6', 'BACB'], ['2019Q3', 'CABC'], ['2012Q20', 'ACBAC'],
+].map(([sourceId, answers]) => ({ sourceId, answers }));
 const workbook = JSON.parse(await readFile(new URL('../src/data/workbook.json', import.meta.url), 'utf8'));
-const sourceIds = workbook.sections.find(section => section.id === '1.1').questionIds;
+const sourceSections = new Map(workbook.sections.map(section => [section.id, section]));
 const sourceQuestions = new Map(workbook.questions.map(question => [question.id, question]));
-assert.deepEqual(encounters.map(({ sourceId }) => sourceId).sort(), [...sourceIds].sort());
+const sectionFixtures = { '1.1': encounters, '1.2': fractionEncounters };
+for (const [sectionId, levels] of Object.entries(sectionFixtures)) {
+  assert.deepEqual(levels.map(({ sourceId }) => sourceId).sort(), [...sourceSections.get(sectionId).questionIds].sort());
+}
+const workbookSectionPath = sectionId => `/AMC8/sections/${sourceSections.get(sectionId).slug}/`;
 
 const correctAt = (encounter, step) => encounters[encounter - 1].answers[step - 1];
 const wrongAt = (encounter, step) => ['A', 'B', 'C'].find(letter => letter !== correctAt(encounter, step));
@@ -23,12 +31,14 @@ if (process.env.PLAYWRIGHT_CHANNEL) options.channel = process.env.PLAYWRIGHT_CHA
 
 const browser = await chromium.launch(options);
 const issues = [];
+const checkedWorkbookHtml = new Map();
 
 function challenge(page) {
   const root = page.locator('[data-challenge]');
   return {
     root,
     action: name => root.locator(`[data-action="${name}"]`),
+    start: sectionId => root.locator(`[data-start-section="${sectionId}"]`),
     field: name => root.locator(`[data-field="${name}"]`),
     target: letter => root.locator(`[data-target="${letter}"]`),
     state: name => expect(root).toHaveAttribute('data-state', name),
@@ -39,7 +49,7 @@ function challenge(page) {
   };
 }
 
-async function open(page, fromSection = false) {
+async function open(page, fromSection) {
   page.on('pageerror', error => issues.push(error.message));
   page.on('response', response => {
     if (response.status() >= 400 && response.url().startsWith(`${origin}/`)) {
@@ -47,14 +57,22 @@ async function open(page, fromSection = false) {
     }
   });
   if (fromSection) {
-    await page.goto(`${origin}/AMC8/sections/1-1/`);
-    await page.locator('main a[href$="/play/"]').click();
-    await expect(page).toHaveURL(challengeUrl);
+    await page.goto(`${origin}${workbookSectionPath(fromSection)}`);
+    await page.locator(`main a[href$="/play/?section=${fromSection}"]`).click();
+    await expect(page).toHaveURL(`${challengeUrl}?section=${fromSection}`);
   } else {
     await page.goto(challengeUrl);
   }
   const game = challenge(page);
   await game.state('intro');
+  await expect(game.root).not.toHaveAttribute('data-section', /.+/);
+  for (const [sectionId, levels] of Object.entries(sectionFixtures)) {
+    const start = game.start(sectionId);
+    await expect(start).toBeVisible();
+    await expect(start).toContainText(`${levels.length} levels`);
+    if (sectionId === fromSection) await expect(start).toHaveAttribute('data-recommended', /.*/);
+    else await expect(start).not.toHaveAttribute('data-recommended', /.*/);
+  }
   return game;
 }
 
@@ -87,9 +105,12 @@ async function moveWithKeyboard(page, game, key, axis, direction) {
   await page.keyboard.up(key);
 }
 
-async function atQuestion(game, encounter, step, shields) {
+async function atQuestion(game, encounter, step, shields, sectionId = '1.1') {
   await game.state('question');
+  await expect(game.root).toHaveAttribute('data-section', sectionId);
+  await expect(game.field('section-number')).toHaveText(sectionId);
   await expect(game.field('encounter')).toHaveText(String(encounter));
+  await expect(game.field('encounter-total')).toHaveText(String(sectionFixtures[sectionId].length));
   await expect(game.field('step')).toHaveText(String(step));
   await expect(game.field('shields')).toHaveText(String(shields));
 }
@@ -196,15 +217,18 @@ async function verifyReview(page, game, { sourceId, answers }) {
   const href = await game.root.locator('[data-review-link]').getAttribute('href');
   assert(href, `Missing workbook link for ${sourceId}`);
   const url = new URL(href, challengeUrl);
-  assert.equal(url.pathname, '/AMC8/sections/1-1/');
+  assert.equal(url.pathname, workbookSectionPath(sourceQuestions.get(sourceId).sectionId));
   assert.equal(url.hash, `#${anchor}`);
-  const response = await page.request.get(url.href);
-  assert(response.ok(), `${sourceId} workbook link should resolve`);
-  assert((await response.text()).includes(`id="${anchor}"`), `${sourceId} workbook section must contain the source question`);
+  if (!checkedWorkbookHtml.has(url.pathname)) {
+    const response = await page.request.get(url.href);
+    assert(response.ok(), `${sourceId} workbook link should resolve`);
+    checkedWorkbookHtml.set(url.pathname, await response.text());
+  }
+  assert(checkedWorkbookHtml.get(url.pathname).includes(`id="${anchor}"`), `${sourceId} workbook section must contain the source question`);
 }
 
 async function inspectDesktop(page, game) {
-  await game.action('start').click();
+  await game.start('1.1').click();
   await game.state('approach');
   await moveWithKeyboard(page, game, 'd', 'x', 1);
   await moveWithKeyboard(page, game, 'w', 'y', -1);
@@ -294,7 +318,7 @@ async function expectAttackWarning(game) {
 
 async function inspectActiveAttacks(page) {
   const game = await open(page);
-  await game.action('start').click();
+  await game.start('1.1').click();
   await atQuestion(game, 1, 1, 3);
   await expect(game.attackMarker).toBeHidden();
   await expectAttackWarning(game);
@@ -358,7 +382,7 @@ async function tabTo(page, control) {
 }
 
 async function inspectKeyboard(page, game) {
-  await tabTo(page, game.action('start'));
+  await tabTo(page, game.start('1.1'));
   await page.keyboard.press('Enter');
   await atQuestion(game, 1, 1, 3);
   for (const step of [1, 2, 3]) {
@@ -388,7 +412,7 @@ async function inspectTouch(context, page) {
   };
   const touchEnd = () => device.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
-  await game.action('start').tap();
+  await game.start('1.1').tap();
   await game.state('approach');
   const initialX = await playerAxis(game, 'x');
   await touchStart(game.root.locator('[data-move="right"]'));
@@ -446,19 +470,33 @@ async function verifyQuestionReference(page, game, sourceId) {
   }
 }
 
-async function inspectFullSection(page) {
-  const now = new Date('2026-11-16T12:00:00Z');
-  await page.clock.install({ time: now });
-  await page.clock.pauseAt(now.getTime() + 1000);
-  const game = await open(page);
-  await expect(game.root.getByRole('heading', { name: `${encounters.length} monsters to defeat` })).toBeVisible();
-  await game.action('start').press('Enter');
+async function advanceLongLevel(page, game) {
+  let heldKey;
+  try {
+    for (let remaining = 2510; remaining > 0; remaining -= 500) {
+      const warning = await game.arena.getAttribute('data-attack') === 'warning';
+      if (warning && !heldKey) {
+        heldKey = await playerAxis(game, 'x') < 50 ? 'd' : 'a';
+        await page.keyboard.down(heldKey);
+      } else if (!warning && heldKey) {
+        await page.keyboard.up(heldKey);
+        heldKey = undefined;
+      }
+      await page.clock.runFor(Math.min(500, remaining));
+    }
+  } finally {
+    if (heldKey) await page.keyboard.up(heldKey);
+  }
+}
 
-  for (const [index, level] of encounters.entries()) {
+async function playThroughSection(page, game, sectionId, levels) {
+  await game.start(sectionId).press('Enter');
+
+  for (const [index, level] of levels.entries()) {
     const { sourceId, answers } = level;
     await game.state('approach');
     await page.clock.runFor(1260);
-    await atQuestion(game, index + 1, 1, 3);
+    await atQuestion(game, index + 1, 1, 3, sectionId);
     await expect(game.field('step-total')).toHaveText(String(answers.length));
     await verifyQuestionReference(page, game, sourceId);
     for (const [step, answer] of Array.from(answers).entries()) {
@@ -472,30 +510,76 @@ async function inspectFullSection(page) {
       }
       await game.target(answer).press('Enter');
       await game.state('breaking');
-      await page.clock.runFor(2510);
+      if (answers.length > 4) await advanceLongLevel(page, game);
+      else await page.clock.runFor(2510);
     }
     await verifyReview(page, game, level);
     await game.action('next').press('Enter');
   }
-  const totalSteps = encounters.reduce((total, level) => total + level.answers.length, 0);
+  const totalSteps = levels.reduce((total, level) => total + level.answers.length, 0);
   await game.state('summary');
+  await expect(game.root).toHaveAttribute('data-section', sectionId);
+  await expect(game.field('summary-title')).toHaveText(`Section ${sectionId} complete`);
+  await expect(game.root.locator('[data-workbook-link]')).toHaveAttribute('href', workbookSectionPath(sectionId));
   await expect(game.field('score')).toHaveText(`${totalSteps} / ${totalSteps}`);
-  for (const { sourceId, answers } of encounters) {
+  await expect(game.root.locator('[data-review-card]:visible')).toHaveCount(levels.length);
+  for (const { sourceId, answers } of levels) {
     const card = game.root.locator(`[data-review-card="${sourceId}"]`);
     await expect(card).toBeVisible();
     await expect(card.locator('[data-card-steps] li')).toHaveCount(answers.length);
     await expect(card.locator('a')).toHaveAttribute('href', new RegExp(`#q-${sourceId.toLowerCase()}$`));
   }
-  console.log(`PASS all ${encounters.length} levels in order, ${totalSteps} checkpoints, source answers and references`);
+  console.log(`PASS section ${sectionId}: all ${levels.length} levels in order, ${totalSteps} checkpoints, correct score, and workbook references`);
+}
+
+async function inspectFullSections(page) {
+  const now = new Date('2026-11-16T12:00:00Z');
+  await page.clock.install({ time: now });
+  await page.clock.pauseAt(now.getTime() + 1000);
+  const game = await open(page);
+  await playThroughSection(page, game, '1.1', encounters);
+  await game.action('choose').press('Enter');
+  await game.state('intro');
+  await playThroughSection(page, game, '1.2', fractionEncounters);
+
+  await game.action('restart').press('Enter');
+  await page.clock.runFor(1260);
+  await atQuestion(game, 1, 1, 3, '1.2');
+  await game.target(['A', 'B', 'C'].find(letter => letter !== fractionEncounters[0].answers[0])).press('Enter');
+  await game.state('counter');
+  await expect(game.field('shields')).toHaveText('2');
+
+  await game.action('choose').press('Enter');
+  await game.state('intro');
+  await expect(game.root).not.toHaveAttribute('data-section', /.+/);
+  await game.start('1.1').press('Enter');
+  await page.clock.runFor(1260);
+  await atQuestion(game, 1, 1, 3, '1.1');
+  await expect(game.root.locator('[data-results] li')).toHaveCount(0);
+  await game.action('choose').press('Enter');
+  await game.state('intro');
+  await game.start('1.2').press('Enter');
+  await page.clock.runFor(1260);
+  await atQuestion(game, 1, 1, 3, '1.2');
+  await expect(game.root.locator('[data-results] li')).toHaveCount(0);
+  await expect(game.charge).toHaveJSProperty('value', 0);
+  console.log('PASS replay keeps the same section and switching resets health, charge, and progress');
 }
 
 try {
   const fullSection = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  await inspectFullSection(fullSection);
+  await inspectFullSections(fullSection);
   await fullSection.close();
 
+  const fractionLink = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+  const fractionLinkGame = await open(fractionLink, '1.2');
+  await fractionLinkGame.start('1.2').click();
+  await atQuestion(fractionLinkGame, 1, 1, 3, '1.2');
+  await fractionLink.close();
+  console.log('PASS the Section 1.2 workbook link opens the original game with 1.2 recommended');
+
   const desktop = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
-  const desktopGame = await open(desktop, true);
+  const desktopGame = await open(desktop, '1.1');
   await withAutomaticDodging(desktop, desktopGame, () => inspectDesktop(desktop, desktopGame));
   await desktop.close();
 

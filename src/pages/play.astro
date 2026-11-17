@@ -1,15 +1,15 @@
 ---
 import Layout from '../layouts/Layout.astro';
-import { encounters } from '../data/monster-challenge';
+import { challengeSections } from '../data/monster-challenge-sections';
 import { choiceKeys } from '../data/monster-challenge-types';
 import { questionById, questionUrl, sectionUrl, sections, url } from '../lib/content';
 import '../styles/monster-challenge.css';
 
-const section = sections.find(item => item.id === '1.1')!;
-const sectionLink = sectionUrl(section);
+const sectionCards = challengeSections.map(({ id, levels }) => ({ section: sections.find(item => item.id === id)!, levels }));
+const sectionLinks = Object.fromEntries(sectionCards.map(({ section }) => [section.id, sectionUrl(section)]));
+const encounters = challengeSections.flatMap(({ levels }) => levels);
 const sources = Object.fromEntries(encounters.map(({ sourceId }) => [sourceId, questionUrl(questionById.get(sourceId)!)]));
 const figures = Object.fromEntries(encounters.flatMap(({ sourceId, figure }) => figure ? [[sourceId, url(figure.source)]] : []));
-const totalSteps = encounters.reduce((total, level) => total + level.steps.length, 0);
 const directions = [
   { key: 'up', arrow: '↑', label: 'Move up' },
   { key: 'left', arrow: '←', label: 'Move left' },
@@ -19,13 +19,15 @@ const directions = [
 ---
 
 <Layout title="Monster Challenge">
-  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)} data-figures={JSON.stringify(figures)}>
-    <a class="monster-back" href={sectionLink}><span aria-hidden="true">←</span> Back to Section 1.1</a>
+  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)} data-figures={JSON.stringify(figures)} data-section-links={JSON.stringify(sectionLinks)}>
+    <nav class="monster-navigation" aria-label="Challenge navigation">
+      <a class="monster-back" href={url()} data-workbook-link><span aria-hidden="true">←</span> <span data-field="workbook-back">Back to workbook</span></a>
+      <button type="button" class="monster-button" data-action="choose" hidden>Choose section</button>
+    </nav>
     <header class="monster-heading">
       <div>
-        <p class="monster-kicker">AMC 8 · Section 1.1</p>
+        <p class="monster-kicker">AMC 8</p>
         <h1>Monster Challenge</h1>
-        <p class="monster-subtitle">Order of Operations &amp; Clever Computation</p>
       </div>
       <button type="button" class="monster-button monster-language" data-action="language" aria-pressed="false" lang="zh">中文辅助</button>
     </header>
@@ -51,15 +53,22 @@ const directions = [
         </div>
       </div>
       <div class="monster-intro-copy">
-        <h2 id="monster-intro-title">{encounters.length} monsters to defeat</h2>
-        <p>Each math step unlocks one layer of armor. Read the question, pick an answer, then hold your shot on its matching target.</p>
+        <h2 id="monster-intro-title">Choose a section <span lang="zh">选择章节</span></h2>
+        <div class="monster-section-cards">
+          {sectionCards.map(({ section, levels }) => (
+            <button type="button" class="monster-section-card" data-start-section={section.id}>
+              <span class="monster-section-meta"><span>Section {section.id}</span><span>{levels.length} levels</span></span>
+              <strong>{section.titleEn}</strong>
+              <span class="monster-section-zh" lang="zh">{section.titleZh}</span>
+              <span class="monster-section-arrow" aria-hidden="true">→</span>
+            </button>
+          ))}
+        </div>
         <ul>
           <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
-          <li><strong>Aim</strong> at A, B, or C. With a keyboard, tab to a target and press Enter.</li>
-          <li><strong>Dodge</strong> when the monster marks a ring under you. Keep moving even while you shoot.</li>
-          <li><strong>Try again</strong> if a wrong answer or a hit costs you a shield.</li>
+          <li><strong>Answer</strong> by holding your shot on A, B, or C. With a keyboard, tab to a target and press Enter.</li>
+          <li><strong>Dodge</strong> when the monster marks a ring under you. You can move while you shoot.</li>
         </ul>
-        <button type="button" class="monster-button monster-button--primary" data-action="start">Start challenge <span aria-hidden="true">→</span></button>
       </div>
     </section>
 
@@ -75,7 +84,7 @@ const directions = [
         <table class="monster-number-grid" data-level-grid aria-label="Number array from the question" hidden><tbody></tbody></table>
         <ol class="monster-unlocked" data-results aria-label="Steps completed"></ol>
         <div class="monster-step" aria-label="Current step">
-          <span>Step <span data-field="step">1</span> of <span data-field="step-total">{encounters[0].steps.length}</span></span>
+          <span>Step <span data-field="step">1</span> of <span data-field="step-total"></span></span>
         </div>
         <h3 class="monster-prompt" data-field="prompt" tabindex="-1"></h3>
         <p class="challenge-zh" lang="zh" data-field="prompt-zh" hidden></p>
@@ -97,7 +106,7 @@ const directions = [
       <div class="monster-field">
         <div class="monster-hud">
           <div class="monster-hud-foe">
-            <span class="monster-hud-count">Level <span data-field="encounter">1</span> of {encounters.length}</span>
+            <span class="monster-hud-count"><span data-field="section-number"></span> · Level <span data-field="encounter">1</span> of <span data-field="encounter-total"></span></span>
             <strong data-field="monster"></strong>
           </div>
           <div class="monster-hud-end">
@@ -152,25 +161,26 @@ const directions = [
       <ol data-review-steps></ol>
       <div class="monster-review-actions">
         <button type="button" class="monster-button monster-button--primary" data-action="next">Next monster</button>
-        <a class="monster-source" data-review-link href={sectionLink} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
+        <a class="monster-source" data-review-link href={url()} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
       </div>
     </section>
 
     <section class="monster-summary" data-panel="summary" aria-labelledby="monster-summary-title" tabindex="-1" hidden>
-      <h2 id="monster-summary-title">Challenge complete</h2>
-      <p><strong class="monster-score" data-field="score">0 / {totalSteps}</strong> steps correct on the first try</p>
-      <div class="monster-summary-list">
-        {encounters.map(({ sourceId }) => (
-          <details data-review-card={sourceId}>
-            <summary data-card-title>{sourceId}</summary>
-            <ol data-card-steps></ol>
-            <a class="monster-source" href={sources[sourceId]} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
-          </details>
-        ))}
-      </div>
+      <h2 id="monster-summary-title" data-field="summary-title">Challenge complete</h2>
+      <p><strong class="monster-score" data-field="score"></strong> steps correct on the first try</p>
+      {challengeSections.map(({ id, levels }) => (
+        <div class="monster-summary-list" data-section-review={id} hidden>
+          {levels.map(({ sourceId }) => (
+            <details data-review-card={sourceId}>
+              <summary data-card-title>{sourceId}</summary>
+              <ol data-card-steps></ol>
+              <a class="monster-source" href={sources[sourceId]} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
+            </details>
+          ))}
+        </div>
+      ))}
       <div class="monster-summary-actions">
-        <button type="button" class="monster-button monster-button--primary" data-action="restart">Play again</button>
-        <a class="monster-back" href={sectionLink}><span aria-hidden="true">←</span> Back to Section 1.1</a>
+        <button type="button" class="monster-button monster-button--primary" data-action="restart">Replay this section</button>
       </div>
     </section>
   </div>
