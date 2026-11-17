@@ -1,20 +1,22 @@
 import { challengeSections } from '../data/monster-challenge-sections';
 import { choiceKeys, type ChoiceKey, type Localized } from '../data/monster-challenge-types';
 
-type Phase = 'intro' | 'approach' | 'question' | 'breaking' | 'counter' | 'empty' | 'step-cleared' | 'review' | 'summary';
+type Phase = 'intro' | 'approach' | 'question' | 'empty' | 'step-cleared' | 'review' | 'summary';
 type Point = { x: number; y: number };
 type Direction = 'up' | 'left' | 'down' | 'right';
 type ChallengeSection = (typeof challengeSections)[number];
-type AttackSite = { aim: Point; origin: Point; remaining: number };
-type Attack = (AttackSite & { stage: 'warning' }) | (AttackSite & { stage: 'impact'; hit: boolean });
+type AttackSite = { aim: Point; remaining: number };
+type Warning = AttackSite & { stage: 'warning'; launch?: Point };
+type Attack = Warning | (AttackSite & { stage: 'impact'; hit: boolean });
+type ShotFeedback = { kind: 'correct'; message: Localized } | { kind: 'wrong'; target: ChoiceKey; message: Localized };
 
-const chargeDuration = 2000;
+const hitsToBreak = 3;
 const maxShields = 3;
-const timings = { approach: 1200, counter: 550, 'step-cleared': 450 };
-const attackTimings = [
-  { first: 3700, repeat: 3350, warning: 1400 },
-  { first: 3100, repeat: 2850, warning: 1250 },
-  { first: 2700, repeat: 2350, warning: 1150 },
+const timings = { approach: 1200, 'step-cleared': 450, shot: 155 };
+const encounterTiers = [
+  { first: 2300, repeat: 3150, warning: 1400, patrolPeriod: 5700, patrolRange: 13 },
+  { first: 1950, repeat: 2700, warning: 1250, patrolPeriod: 4900, patrolRange: 16 },
+  { first: 1700, repeat: 2300, warning: 1150, patrolPeriod: 4200, patrolRange: 18 },
 ];
 const projectileTravel = 360;
 const attackImpact = 380;
@@ -31,12 +33,8 @@ const directionByKey: Record<string, Direction | undefined> = {
 };
 
 const correctFeedback = {
-  en: 'Correct! Hold your shot until the armor breaks.',
-  zh: '选对了！持续射击这个部位，直到护甲击破。',
-};
-const automaticFeedback = {
-  en: 'Correct! Breaking the armor.',
-  zh: '选对了！正在击破护甲。',
+  en: 'Correct! Hit that target again.',
+  zh: '选对了！继续点射这个靶位。',
 };
 
 function mountChallenge(root: HTMLElement) {
@@ -58,6 +56,8 @@ function mountChallenge(root: HTMLElement) {
   const requestedSection = challengeSections.find(section => section.id === requestedSectionId);
   const chooseSection = action('choose');
   const arena = find('[data-arena]');
+  const foe = find('[data-foe]');
+  const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
   const attackMarker = find('[data-attack-marker]');
   const attackEmitter = find('[data-attack-emitter]');
   const attackProjectile = find('[data-attack-projectile]');
@@ -67,7 +67,8 @@ function mountChallenge(root: HTMLElement) {
   const muzzle = player.querySelector('[data-muzzle]') ?? player;
   const beam = find<SVGSVGElement>('[data-beam]');
   const beamLine = find<SVGLineElement>('[data-beam-line]');
-  const chargeDisplay = find<HTMLProgressElement>('[data-charge]');
+  const hitDisplay = find<HTMLProgressElement>('[data-charge]');
+  const hitCount = field('hits');
   const results = find('[data-results]');
   const figureButton = find<HTMLButtonElement>('[data-level-figure]');
   const figureImage = find<HTMLImageElement>('[data-level-figure-image]');
@@ -97,12 +98,10 @@ function mountChallenge(root: HTMLElement) {
   let showChinese = false;
   let firstChoices: Map<number, boolean>[] = [];
   let position = { ...initialPosition };
-  let feedback: Localized | null = null;
-  let struck: ChoiceKey | null = null;
-  let charge = 0;
-  let firingPointer: number | null = null;
-  let keyboardFiring = false;
-  let miss: { point: Point; time: number } | null = null;
+  let patrolTime = 0;
+  let feedback: ShotFeedback | null = null;
+  let hits = 0;
+  let shot: { target?: HTMLElement; remaining: number } | null = null;
   let attack: Attack | null = null;
   let attackDelay = 0;
   let attackMessage: keyof typeof attackMessages = 'idle';
@@ -113,7 +112,7 @@ function mountChallenge(root: HTMLElement) {
 
   const currentEncounter = () => activeSection.levels[encounterIndex];
   const currentStep = () => currentEncounter().steps[stepIndex];
-  const attackTiming = () => attackTimings[Math.floor(encounterIndex * attackTimings.length / activeSection.levels.length)];
+  const encounterTier = () => encounterTiers[Math.floor(encounterIndex * encounterTiers.length / activeSection.levels.length)];
   const inArena = () => phase !== 'intro' && phase !== 'review' && phase !== 'summary';
   const paused = () => blurred || document.hidden || Boolean(document.querySelector('dialog[open]'));
 
@@ -177,11 +176,25 @@ function mountChallenge(root: HTMLElement) {
     }
   }
 
+  function renderShotFeedback() {
+    hitDisplay.value = hits;
+    setText(hitCount, `${hits} / ${hitsToBreak}`);
+    showTranslation('feedback', feedback?.message ?? null);
+    const fieldFeedback = field('feedback');
+    fieldFeedback.hidden = !feedback;
+    fieldFeedback.dataset.kind = feedback?.kind ?? '';
+    const correct = currentStep().correct;
+    for (const { key, button } of targets) {
+      if (feedback?.kind === 'wrong' && feedback.target === key) button.dataset.hit = 'wrong';
+      else if (hits > 0 && key === correct) button.dataset.hit = 'correct';
+      else delete button.dataset.hit;
+    }
+  }
+
   function renderGame() {
     const encounter = currentEncounter();
     const step = currentStep();
     const cleared = stepIndex + Number(phase === 'step-cleared');
-    const active = phase === 'question' || phase === 'breaking';
 
     arena.dataset.monster = String(encounterIndex % 3);
     root.toggleAttribute('data-final-armor', phase === 'step-cleared' && cleared === encounter.steps.length);
@@ -199,22 +212,14 @@ function mountChallenge(root: HTMLElement) {
     showTranslation('stem', encounter.stem);
     renderQuestionReference();
     showTranslation('prompt', step.prompt);
-    showTranslation('feedback', feedback);
-    const feedbackField = field('feedback');
-    feedbackField.hidden = !feedback;
-    feedbackField.dataset.kind = struck === step.correct || phase === 'step-cleared' ? 'correct' : 'wrong';
+    renderShotFeedback();
     setList(results, encounter.steps.slice(0, cleared).map(item => item.unlocked));
     recover.hidden = phase !== 'empty';
-    chargeDisplay.hidden = phase !== 'breaking';
-    chargeDisplay.value = charge;
 
     for (const { key, button, option } of targets) {
-      const canFire = active && (phase === 'question' || key === struck);
       option.replaceChildren(...localizedNodes(step.options[key].text));
       button.hidden = phase === 'approach';
-      button.setAttribute('aria-disabled', String(!canFire));
-      if (key === struck) button.dataset.hit = key === step.correct ? 'correct' : 'wrong';
-      else delete button.dataset.hit;
+      button.setAttribute('aria-disabled', String(phase !== 'question'));
     }
   }
 
@@ -265,55 +270,59 @@ function mountChallenge(root: HTMLElement) {
     player.style.setProperty('--y', `${position.y}%`);
   }
 
+  function drawFoe() {
+    const { patrolPeriod, patrolRange } = encounterTier();
+    const angle = 2 * Math.PI * patrolTime / patrolPeriod;
+    foe.style.setProperty('--x', `${52 + patrolRange * Math.sin(angle)}%`);
+    foe.style.setProperty('--y', `${45 + 9 * Math.sin(angle * 1.5)}%`);
+  }
+
   function startEncounter(index: number) {
     encounterIndex = index;
     stepIndex = 0;
     shields = maxShields;
     position = { ...initialPosition };
+    patrolTime = 0;
     feedback = null;
-    struck = null;
-    charge = 0;
-    keyboardFiring = false;
+    hits = 0;
     resetInput();
     resetAttack();
     changePhase('approach');
     drawPlayer();
+    drawFoe();
     if (!frameId) frameId = requestAnimationFrame(tick);
   }
 
   function resetInput() {
     keyMoves.clear();
     touchMoves.clear();
-    firingPointer = null;
-    miss = null;
+    clearShot();
     lastFrame = 0;
-    beam.toggleAttribute('hidden', true);
-    player.removeAttribute('data-firing');
   }
 
-  function selectTarget(key: ChoiceKey, pointer: number | null) {
-    if (paused()) return false;
-    if (phase === 'question') {
-      const step = currentStep();
-      const right = key === step.correct;
-      const choices = firstChoices[encounterIndex];
-      if (!choices.has(stepIndex)) choices.set(stepIndex, right);
-      miss = null;
-      struck = key;
-      if (!right) {
-        shields -= 1;
-        feedback = step.options[key].hint ?? null;
-        resetAttack();
-        changePhase('counter');
-        return true;
-      }
-      feedback = pointer === null ? automaticFeedback : correctFeedback;
-      changePhase('breaking');
+  function selectTarget(key: ChoiceKey, button: HTMLButtonElement, point: Point) {
+    if (phase !== 'question' || paused()) return;
+    const step = currentStep();
+    const correct = key === step.correct;
+    const choices = firstChoices[encounterIndex];
+    if (!choices.has(stepIndex)) choices.set(stepIndex, correct);
+    if (correct) {
+      hits += 1;
+      feedback = { kind: 'correct', message: hits === hitsToBreak ? step.explanation : correctFeedback };
+    } else {
+      const hint = step.options[key].hint;
+      feedback = {
+        kind: 'wrong',
+        target: key,
+        message: {
+          en: hint ? `Incorrect. ${hint.en}` : 'Incorrect. Try another target.',
+          zh: hint ? `选错了。${hint.zh}` : '选错了。请试另一个靶位。',
+        },
+      };
     }
-    if (phase !== 'breaking' || key !== struck || firingPointer !== null || keyboardFiring) return false;
-    firingPointer = pointer;
-    keyboardFiring = pointer === null;
-    return true;
+    if (hits === hitsToBreak) changePhase('step-cleared');
+    else renderShotFeedback();
+    flashShot(point, button);
   }
 
   function center(element: Element): Point {
@@ -344,20 +353,17 @@ function mountChallenge(root: HTMLElement) {
 
   function resetAttack() {
     attack = null;
-    attackDelay = attackTiming().first;
+    attackDelay = encounterTier().first;
     attackMessage = 'idle';
     attackProjectile.hidden = true;
     renderAttack();
   }
 
   function beginWarning() {
-    const bounds = arena.getBoundingClientRect();
-    const emitter = center(attackEmitter);
     attack = {
       stage: 'warning',
       aim: { ...position },
-      origin: { x: (emitter.x - bounds.x) * 100 / bounds.width, y: (emitter.y - bounds.y) * 100 / bounds.height },
-      remaining: attackTiming().warning,
+      remaining: encounterTier().warning,
     };
     attackMarker.style.setProperty('--attack-x', `${attack.aim.x}%`);
     attackMarker.style.setProperty('--attack-y', `${attack.aim.y}%`);
@@ -366,10 +372,18 @@ function mountChallenge(root: HTMLElement) {
     renderAttack();
   }
 
-  function drawProjectile(warning: AttackSite) {
+  function drawProjectile(warning: Warning) {
+    if (!warning.launch) {
+      const bounds = arena.getBoundingClientRect();
+      const emitter = center(attackEmitter);
+      warning.launch = {
+        x: (emitter.x - bounds.x) * 100 / bounds.width,
+        y: (emitter.y - bounds.y) * 100 / bounds.height,
+      };
+    }
     const progress = 1 - warning.remaining / projectileTravel;
-    const x = warning.origin.x + (warning.aim.x - warning.origin.x) * progress;
-    const y = warning.origin.y + (warning.aim.y - warning.origin.y) * progress;
+    const x = warning.launch.x + (warning.aim.x - warning.launch.x) * progress;
+    const y = warning.launch.y + (warning.aim.y - warning.launch.y) * progress;
     attackProjectile.style.setProperty('--projectile-x', `${x}%`);
     attackProjectile.style.setProperty('--projectile-y', `${y}%`);
     attackProjectile.hidden = false;
@@ -391,7 +405,6 @@ function mountChallenge(root: HTMLElement) {
       renderShields();
       return;
     }
-    keyboardFiring = false;
     resetInput();
     changePhase('empty');
     if (document.activeElement?.matches('[data-target]')) recover.focus({ preventScroll: true });
@@ -402,12 +415,12 @@ function mountChallenge(root: HTMLElement) {
       attack.remaining -= elapsed;
       if (attack.remaining <= 0) {
         attack = null;
-        attackDelay = attackTiming().repeat;
+        attackDelay = encounterTier().repeat;
         renderAttack();
       }
       return;
     }
-    if (phase !== 'question' && phase !== 'breaking') return;
+    if (phase !== 'question') return;
     if (!attack) {
       attackDelay -= elapsed;
       if (attackDelay <= 0) beginWarning();
@@ -419,19 +432,24 @@ function mountChallenge(root: HTMLElement) {
     else if (attack.remaining <= projectileTravel) drawProjectile(attack);
   }
 
-  function drawBeam(target: Point | Element, kind: 'shot' | 'counter') {
+  function clearShot() {
+    shot?.target?.removeAttribute('data-flash');
+    shot = null;
+    beam.setAttribute('hidden', '');
+  }
+
+  function flashShot(point: Point, target?: HTMLElement) {
+    clearShot();
     const bounds = arena.getBoundingClientRect();
-    const own = center(muzzle);
-    const other = target instanceof Element ? center(target) : target;
-    const start = kind === 'shot' ? own : other;
-    const end = kind === 'shot' ? other : own;
+    const start = center(muzzle);
     beamLine.setAttribute('x1', String((start.x - bounds.x) * 1000 / bounds.width));
     beamLine.setAttribute('y1', String((start.y - bounds.y) * 1000 / bounds.height));
-    beamLine.setAttribute('x2', String((end.x - bounds.x) * 1000 / bounds.width));
-    beamLine.setAttribute('y2', String((end.y - bounds.y) * 1000 / bounds.height));
-    beam.dataset.kind = kind;
+    beamLine.setAttribute('x2', String((point.x - bounds.x) * 1000 / bounds.width));
+    beamLine.setAttribute('y2', String((point.y - bounds.y) * 1000 / bounds.height));
+    beam.dataset.kind = 'shot';
     beam.removeAttribute('hidden');
-    player.toggleAttribute('data-firing', kind === 'shot');
+    target?.setAttribute('data-flash', '');
+    shot = { target, remaining: timings.shot };
   }
 
   function movePlayer(elapsed: number) {
@@ -457,24 +475,14 @@ function mountChallenge(root: HTMLElement) {
     lastFrame = now;
     phaseTime += elapsed;
     movePlayer(elapsed);
+    if (phase === 'question' && !reducedMotion.matches) {
+      patrolTime += elapsed;
+      drawFoe();
+    }
 
-    const target = targets.find(item => item.key === struck)?.button;
     if (phase === 'approach' && phaseTime >= timings.approach) {
       changePhase('question');
       if (document.activeElement === document.body) prompt.focus({ preventScroll: true });
-    } else if (phase === 'counter' && phaseTime >= timings.counter) {
-      struck = null;
-      changePhase(shields ? 'question' : 'empty');
-      if (!shields && document.activeElement?.matches('[data-target]')) recover.focus({ preventScroll: true });
-    } else if (phase === 'breaking' && (firingPointer !== null || keyboardFiring)) {
-      charge = Math.min(charge + elapsed, chargeDuration);
-      chargeDisplay.value = charge;
-      if (charge === chargeDuration) {
-        firingPointer = null;
-        keyboardFiring = false;
-        feedback = currentStep().explanation;
-        changePhase('step-cleared');
-      }
     } else if (phase === 'step-cleared' && phaseTime >= timings['step-cleared']) {
       if (stepIndex === currentEncounter().steps.length - 1) {
         resetInput();
@@ -484,24 +492,17 @@ function mountChallenge(root: HTMLElement) {
         return;
       }
       stepIndex += 1;
-      charge = 0;
-      struck = null;
+      hits = 0;
+      feedback = null;
       attackDelay = Math.max(1200, attackDelay);
       changePhase('question');
       if (document.activeElement?.matches('[data-target]')) prompt.focus({ preventScroll: true });
     }
 
     advanceAttack(elapsed);
-    if (miss) {
-      miss.time -= elapsed;
-      if (miss.time <= 0) miss = null;
-    }
-    if (target && phase === 'counter') drawBeam(target, 'counter');
-    else if (target && phase === 'breaking' && (firingPointer !== null || keyboardFiring)) drawBeam(target, 'shot');
-    else if (miss) drawBeam(miss.point, 'shot');
-    else {
-      beam.toggleAttribute('hidden', true);
-      player.removeAttribute('data-firing');
+    if (shot) {
+      shot.remaining -= elapsed;
+      if (shot.remaining <= 0) clearShot();
     }
   }
 
@@ -522,7 +523,6 @@ function mountChallenge(root: HTMLElement) {
     frameId = 0;
     resetInput();
     resetAttack();
-    keyboardFiring = false;
     changePhase('intro');
     sectionButtons.find(button => button.dataset.startSection === activeSection.id)?.focus();
   });
@@ -539,9 +539,7 @@ function mountChallenge(root: HTMLElement) {
     if (phase !== 'empty') return;
     shields = maxShields;
     resetAttack();
-    const resumeShot = struck === currentStep().correct;
-    if (resumeShot) feedback = correctFeedback;
-    changePhase(resumeShot ? 'breaking' : 'question');
+    changePhase('question');
     prompt.focus({ preventScroll: true });
   });
   language.addEventListener('click', () => {
@@ -552,25 +550,25 @@ function mountChallenge(root: HTMLElement) {
 
   for (const { key, button } of targets) {
     button.addEventListener('pointerdown', event => {
-      if (event.button !== 0 || !selectTarget(key, event.pointerId)) return;
+      if (event.button !== 0) return;
       event.preventDefault();
-      button.setPointerCapture(event.pointerId);
+      selectTarget(key, button, { x: event.clientX, y: event.clientY });
     });
     button.addEventListener('keydown', event => {
       if (event.key !== 'Enter' && event.key !== ' ') return;
       event.preventDefault();
-      if (!event.repeat) selectTarget(key, null);
+      if (!event.repeat) selectTarget(key, button, center(button));
     });
     button.addEventListener('click', event => {
-      if (event.detail === 0) selectTarget(key, null);
+      if (event.detail === 0) selectTarget(key, button, center(button));
     });
     button.addEventListener('contextmenu', event => event.preventDefault());
   }
 
   arena.addEventListener('pointerdown', event => {
-    if (event.button !== 0 || paused() || (phase !== 'question' && phase !== 'breaking')) return;
+    if (event.button !== 0 || paused() || phase !== 'question') return;
     if (event.target instanceof Element && event.target.closest('button')) return;
-    miss = { point: { x: event.clientX, y: event.clientY }, time: 125 };
+    flashShot({ x: event.clientX, y: event.clientY });
   });
 
   root.querySelectorAll<HTMLButtonElement>('[data-move]').forEach(button => {
@@ -584,7 +582,6 @@ function mountChallenge(root: HTMLElement) {
   });
 
   function releasePointer(event: PointerEvent) {
-    if (firingPointer === event.pointerId) firingPointer = null;
     touchMoves.delete(event.pointerId);
   }
 

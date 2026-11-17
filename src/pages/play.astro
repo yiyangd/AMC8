@@ -66,8 +66,9 @@ const directions = [
         </div>
         <ul>
           <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
-          <li><strong>Answer</strong> by holding your shot on A, B, or C. With a keyboard, tab to a target and press Enter.</li>
-          <li><strong>Dodge</strong> when the monster marks a ring under you. You can move while you shoot.</li>
+          <li><strong>Shoot</strong> by clicking or tapping a moving A, B, or C target. With a keyboard, tab to a target and press Enter for each shot.</li>
+          <li><strong>Break the armor</strong> with three correct hits per step. A wrong answer gives you a hint.</li>
+          <li><strong>Dodge</strong> when the monster marks a ring under you.</li>
         </ul>
       </div>
     </section>
@@ -122,13 +123,17 @@ const directions = [
         </p>
         <div class="monster-arena" data-arena data-monster="0" aria-label="Arena">
           <div class="monster-platform"></div>
+          <div class="monster-hit-count">
+            <span>Hits <strong data-field="hits">0 / 3</strong></span>
+            <progress data-charge max="3" value="0" aria-label="Correct hits for this step"></progress>
+          </div>
           <div class="monster-attack-marker" data-attack-marker aria-hidden="true" hidden></div>
           <div class="monster-player" data-player aria-hidden="true">
             <span class="monster-player-body"></span>
             <span class="monster-player-helmet"></span>
             <span class="monster-blaster" data-muzzle></span>
           </div>
-          <div class="monster-foe">
+          <div class="monster-foe" data-foe>
             <div class="monster-horn monster-horn--left"></div>
             <div class="monster-horn monster-horn--right"></div>
             <div class="monster-claw monster-claw--left"></div>
@@ -149,7 +154,6 @@ const directions = [
           <div class="monster-dpad" role="group" aria-label="Touch movement">
             {directions.map(({ key, arrow, label }) => <button type="button" aria-label={label} data-move={key}>{arrow}</button>)}
           </div>
-          <label class="monster-charge">Armor break <progress data-charge max="2000" value="0"></progress></label>
         </div>
       </div>
     </section>

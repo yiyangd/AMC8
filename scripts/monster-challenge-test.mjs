@@ -42,8 +42,9 @@ function challenge(page) {
     field: name => root.locator(`[data-field="${name}"]`),
     target: letter => root.locator(`[data-target="${letter}"]`),
     state: name => expect(root).toHaveAttribute('data-state', name),
-    charge: root.locator('[data-charge]'),
+    hitProgress: root.locator('[data-charge]'),
     player: root.locator('[data-player]'),
+    foe: root.locator('[data-arena] [data-foe]'),
     arena: root.locator('[data-arena]'),
     attackMarker: root.locator('[data-attack-marker]'),
   };
@@ -76,32 +77,39 @@ async function open(page, fromSection) {
   return game;
 }
 
-async function center(locator) {
-  await locator.scrollIntoViewIfNeeded();
+async function center(locator, scroll = true) {
+  if (scroll) await locator.scrollIntoViewIfNeeded();
   const box = await locator.boundingBox();
   assert(box, 'Control must have visible bounds');
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
 async function mouseDown(page, locator) {
-  const { x, y } = await center(locator);
+  // Sample the live target location without asking Playwright to wait for it to stop moving.
+  const { x, y } = await center(locator, false);
   await page.mouse.move(x, y);
   await page.mouse.down();
 }
 
-async function readCharge(game) {
-  return game.charge.evaluate(element => element.value);
+async function shoot(page, locator) {
+  await mouseDown(page, locator);
+  await page.mouse.up();
 }
 
-async function playerAxis(game, axis) {
-  return game.player.evaluate((element, coordinate) =>
+async function expectHits(game, count) {
+  await expect(game.hitProgress).toHaveJSProperty('value', count);
+  await expect(game.field('hits')).toHaveText(new RegExp(`^${count}\\s*/\\s*3$`));
+}
+
+async function arenaAxis(locator, axis) {
+  return locator.evaluate((element, coordinate) =>
     Number.parseFloat(getComputedStyle(element).getPropertyValue(`--${coordinate}`)), axis);
 }
 
 async function moveWithKeyboard(page, game, key, axis, direction) {
-  const initial = await playerAxis(game, axis);
+  const initial = await arenaAxis(game.player, axis);
   await page.keyboard.down(key);
-  await expect.poll(async () => ((await playerAxis(game, axis)) - initial) * direction).toBeGreaterThan(0);
+  await expect.poll(async () => ((await arenaAxis(game.player, axis)) - initial) * direction).toBeGreaterThan(0);
   await page.keyboard.up(key);
 }
 
@@ -131,7 +139,7 @@ async function withAutomaticDodging(page, game, play) {
         while (!finished) {
           const warning = await game.arena.getAttribute('data-attack') === 'warning';
           if (warning && !heldKey) {
-            heldKey = await playerAxis(game, 'x') < 50 ? 'd' : 'a';
+            heldKey = await arenaAxis(game.player, 'x') < 50 ? 'd' : 'a';
             await page.keyboard.down(heldKey);
           } else if (!warning && heldKey) {
             await page.keyboard.up(heldKey);
@@ -169,29 +177,27 @@ async function finishStep(game, encounter, step, shields) {
     return;
   }
   await atQuestion(game, encounter, step + 1, shields);
-  await expect(game.charge).toHaveJSProperty('value', 0);
+  await expectHits(game, 0);
 }
 
-async function breakWithMouse(page, game, encounter, step, shields) {
-  const answer = correctAt(encounter, step);
-  await mouseDown(page, game.target(answer));
-  await game.state('breaking');
+async function breakWithMouse(page, game, encounter, step, shields, startingHits = 0) {
+  const target = game.target(correctAt(encounter, step));
+  for (let hit = startingHits + 1; hit <= 3; hit++) {
+    await shoot(page, target);
+    await expectHits(game, hit);
+  }
+  await game.state('step-cleared');
   await finishStep(game, encounter, step, shields);
-  await page.mouse.up();
 }
 
-async function wrongHit(page, game, letter, expectedShields, hold = false) {
-  await mouseDown(page, game.target(letter));
-  await game.state('counter');
+async function wrongHit(page, game, letter, expectedHits, expectedShields) {
+  const target = game.target(letter);
+  await shoot(page, target);
+  await game.state('question');
+  await expect(target).toHaveAttribute('data-hit', 'wrong');
+  await expectHits(game, expectedHits);
   await expect(game.field('shields')).toHaveText(String(expectedShields));
   await expect(game.field('feedback')).toContainText(/\S/);
-  if (!hold) await page.mouse.up();
-}
-
-async function expectPaused(page, game) {
-  const charge = await readCharge(game);
-  await page.waitForTimeout(250);
-  assert.equal(await readCharge(game), charge, 'Interruption must stop charge without clearing progress');
 }
 
 async function setPageHidden(page, hidden) {
@@ -233,6 +239,10 @@ async function inspectDesktop(page, game) {
   await moveWithKeyboard(page, game, 'd', 'x', 1);
   await moveWithKeyboard(page, game, 'w', 'y', -1);
   await atQuestion(game, 1, 1, 3);
+  await expect(game.attackMarker).toBeHidden();
+  await expect(game.hitProgress).toHaveAttribute('max', '3');
+  const initialFoeX = await arenaAxis(game.foe, 'x');
+  await expect.poll(async () => Math.abs((await arenaAxis(game.foe, 'x')) - initialFoeX)).toBeGreaterThan(1);
   await expect(game.field('stem')).toContainText(/\S/);
   await expect(game.field('prompt')).toContainText(/\S/);
   await expect(game.root.locator('[data-option]')).toHaveCount(3);
@@ -242,65 +252,47 @@ async function inspectDesktop(page, game) {
   await expect(game.field('stem-zh')).toContainText(/\S/);
   await expect(game.field('prompt-zh')).toBeVisible();
 
-  await expect(game.attackMarker).toBeHidden();
   await atQuestion(game, 1, 1, 3);
   await emptyShot(page, game);
   await expect(game.root.locator('[data-beam]')).toHaveAttribute('data-kind', 'shot');
   await atQuestion(game, 1, 1, 3);
-  await expect(game.charge).toHaveJSProperty('value', 0);
-  console.log('PASS Section 1.1 entry, movement, translation, initial reading grace and harmless empty shot');
+  await expectHits(game, 0);
+  console.log('PASS Section 1.1 entry, player and monster movement, translation, reading grace and harmless empty shot');
 
-  await wrongHit(page, game, wrongAt(1, 1), 2, true);
-  await expect(game.root.locator('[data-beam]')).toHaveAttribute('data-kind', 'counter');
+  await wrongHit(page, game, wrongAt(1, 1), 0, 3);
+  await expect(game.field('feedback')).toContainText(/^Incorrect\./);
   await expect(game.field('feedback-zh')).toBeVisible();
-  await atQuestion(game, 1, 1, 2);
-  await page.waitForTimeout(700);
-  await atQuestion(game, 1, 1, 2);
-  await page.mouse.up();
 
   const firstTarget = game.target(correctAt(1, 1));
   await mouseDown(page, firstTarget);
-  await game.state('breaking');
-  await expect.poll(() => readCharge(game)).toBeGreaterThan(200);
+  await expectHits(game, 1);
+  await page.waitForTimeout(500);
+  await expectHits(game, 1);
+  await atQuestion(game, 1, 1, 3);
   await page.mouse.up();
-  await expectPaused(page, game);
 
+  await wrongHit(page, game, wrongAt(1, 1), 1, 3);
+  await shoot(page, firstTarget);
+  await expectHits(game, 2);
+  await atQuestion(game, 1, 1, 3);
   await mouseDown(page, firstTarget);
-  await expect.poll(() => readCharge(game)).toBeGreaterThan(550);
-  await setPageHidden(page, true);
-  await expectPaused(page, game);
-  await setPageHidden(page, false);
-  await expectPaused(page, game);
+  await game.state('step-cleared');
+  await expectHits(game, 3);
+  await finishStep(game, 1, 1, 3);
+  await page.waitForTimeout(250);
+  await expectHits(game, 0);
   await page.mouse.up();
+  console.log('PASS three separate clicks clear a step, wrong shots preserve hits and shields, and holding fires only once');
 
-  await mouseDown(page, firstTarget);
-  await finishStep(game, 1, 1, 2);
-  // Keep the pointer pressed into the next question. It may neither answer nor chip a target.
-  await page.waitForTimeout(350);
-  await atQuestion(game, 1, 2, 2);
-  await expect(game.charge).toHaveJSProperty('value', 0);
-  await page.mouse.up();
-  console.log('PASS a held wrong shot counters once, release and tab hiding pause charge, holding does not cross steps');
-
-  await breakWithMouse(page, game, 1, 2, 2);
-  await breakWithMouse(page, game, 1, 3, 2);
+  await breakWithMouse(page, game, 1, 2, 3);
+  await breakWithMouse(page, game, 1, 3, 3);
   await verifyReview(page, game, encounters[0]);
   await game.action('next').click();
   await game.state('approach');
   await moveWithKeyboard(page, game, 'ArrowLeft', 'x', -1);
   await atQuestion(game, 2, 1, 3);
   await breakWithMouse(page, game, 2, 1, 3);
-  const results = game.root.locator('[data-results] li');
-  await expect(results).toHaveCount(1);
-  const solvedSteps = await results.allTextContents();
-  for (const shields of [2, 1, 0]) {
-    await wrongHit(page, game, wrongAt(2, 2), shields);
-    if (shields) await atQuestion(game, 2, 2, shields);
-  }
-  await game.state('empty');
-  await game.action('recover').click();
-  await atQuestion(game, 2, 2, 3);
-  await expect(results).toHaveText(solvedSteps);
+  await expect(game.root.locator('[data-results] li')).toHaveCount(1);
   await breakWithMouse(page, game, 2, 2, 3);
   await breakWithMouse(page, game, 2, 3, 3);
   await verifyReview(page, game, encounters[1]);
@@ -308,7 +300,7 @@ async function inspectDesktop(page, game) {
   await game.state('approach');
   await moveWithKeyboard(page, game, 'ArrowDown', 'y', 1);
   await atQuestion(game, 3, 1, 3);
-  console.log('PASS recovery preserves the current step and earlier answers');
+  console.log('PASS desktop pointer shots clear moving targets across steps and monsters');
 }
 
 async function expectAttackWarning(game) {
@@ -325,9 +317,13 @@ async function inspectActiveAttacks(page) {
   await atQuestion(game, 1, 1, 3);
   await expect(game.root.locator('[data-attack-status]')).toContainText(/\S/);
   await setPageHidden(page, true);
+  const frozenFoeX = await arenaAxis(game.foe, 'x');
+  await shoot(page, game.target(correctAt(1, 1)));
   await page.waitForTimeout(1500);
   await expect(game.arena).toHaveAttribute('data-attack', 'warning');
   await expect(game.field('shields')).toHaveText('3');
+  await expectHits(game, 0);
+  assert.equal(await arenaAxis(game.foe, 'x'), frozenFoeX, 'The monster should stop moving when the tab is hidden');
   await setPageHidden(page, false);
   await expect(game.field('shields')).toHaveText('2');
   await expect(game.attackMarker).toBeHidden();
@@ -335,42 +331,41 @@ async function inspectActiveAttacks(page) {
 
   await expectAttackWarning(game);
   const lockedX = await game.attackMarker.evaluate(marker => marker.style.getPropertyValue('--attack-x'));
-  const initialX = await playerAxis(game, 'x');
-  await mouseDown(page, game.target(correctAt(1, 1)));
-  await game.state('breaking');
+  const initialX = await arenaAxis(game.player, 'x');
   await page.keyboard.down('d');
   try {
-    await expect.poll(() => playerAxis(game, 'x'), { intervals: [50, 100] }).toBeGreaterThan(initialX + 17);
+    await shoot(page, game.target(correctAt(1, 1)));
+    await expectHits(game, 1);
+    await expect.poll(() => arenaAxis(game.player, 'x'), { intervals: [50, 100] }).toBeGreaterThan(initialX + 17);
     assert.equal(await game.attackMarker.evaluate(marker => marker.style.getPropertyValue('--attack-x')), lockedX,
       'The attack must stay aimed at the warning location when the player moves');
     await page.waitForFunction(() => document.querySelector('[data-arena]')?.dataset.attack === 'impact', null,
       { timeout: 3500 });
     await expect(game.field('shields')).toHaveText('2');
-    await expect.poll(() => readCharge(game)).toBeGreaterThan(600);
+    await expectHits(game, 1);
   } finally {
     await page.keyboard.up('d');
   }
-  await finishStep(game, 1, 1, 2);
-  await page.mouse.up();
-  console.log('PASS warnings precede damage, stationary players lose one shield, and moving while charging dodges the same attack');
+  await breakWithMouse(page, game, 1, 1, 2, 1);
+  console.log('PASS hidden play pauses, warnings precede damage, and players can dodge while clicking moving targets');
 
-  await wrongHit(page, game, wrongAt(1, 2), 1);
+  const secondTarget = game.target(correctAt(1, 2));
+  await shoot(page, secondTarget);
+  await shoot(page, secondTarget);
+  await expectHits(game, 2);
+  await expectAttackWarning(game);
   await atQuestion(game, 1, 2, 1);
-  await mouseDown(page, game.target(correctAt(1, 2)));
-  await game.state('breaking');
-  await expect.poll(() => readCharge(game)).toBeGreaterThan(250);
-  await page.mouse.up();
-  const savedCharge = await readCharge(game);
+  await expectHits(game, 2);
   await expectAttackWarning(game);
   await game.state('empty');
   await expect(game.field('shields')).toHaveText('0');
   await expect(game.field('step')).toHaveText('2');
+  await expectHits(game, 2);
   await game.action('recover').click();
-  await game.state('breaking');
-  await expect(game.field('shields')).toHaveText('3');
-  assert.equal(await readCharge(game), savedCharge, 'Recovering from an active attack must retain armor damage');
-  await breakWithMouse(page, game, 1, 2, 3);
-  console.log('PASS the last shield can break between shots, and recovery restores the same locked answer and charge');
+  await atQuestion(game, 1, 2, 3);
+  await expectHits(game, 2);
+  await breakWithMouse(page, game, 1, 2, 3, 2);
+  console.log('PASS monster attacks exhaust shields and recovery retains both earned hits on the same step');
 }
 
 async function tabTo(page, control) {
@@ -388,7 +383,15 @@ async function inspectKeyboard(page, game) {
   for (const step of [1, 2, 3]) {
     await tabTo(page, game.target(encounters[0].answers[step - 1]));
     await page.keyboard.down('Enter');
-    await game.state('breaking');
+    await expectHits(game, 1);
+    await page.keyboard.down('Enter');
+    await page.keyboard.down('Enter');
+    await expectHits(game, 1);
+    await page.keyboard.up('Enter');
+    await page.keyboard.press('Enter');
+    await expectHits(game, 2);
+    await page.keyboard.down('Enter');
+    await game.state('step-cleared');
     await finishStep(game, 1, step, 3);
     if (step < 3) {
       await tabTo(page, game.target(encounters[0].answers[step]));
@@ -406,17 +409,17 @@ async function inspectKeyboard(page, game) {
 async function inspectTouch(context, page) {
   const device = await context.newCDPSession(page);
   const game = await open(page);
-  const touchStart = async locator => {
-    const point = await center(locator);
+  const touchStart = async (locator, scroll = true) => {
+    const point = await center(locator, scroll);
     await device.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [point] });
   };
   const touchEnd = () => device.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
 
   await game.start('1.1').tap();
   await game.state('approach');
-  const initialX = await playerAxis(game, 'x');
+  const initialX = await arenaAxis(game.player, 'x');
   await touchStart(game.root.locator('[data-move="right"]'));
-  await expect.poll(() => playerAxis(game, 'x')).toBeGreaterThan(initialX);
+  await expect.poll(() => arenaAxis(game.player, 'x')).toBeGreaterThan(initialX);
   await touchEnd();
   await atQuestion(game, 1, 1, 3);
   const noOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1);
@@ -424,19 +427,43 @@ async function inspectTouch(context, page) {
 
   const moveButton = game.root.locator('[data-move="right"]');
   await moveButton.scrollIntoViewIfNeeded();
-  const shotPoint = await center(game.target(correctAt(1, 1)));
   const movePoint = await center(moveButton);
   await expectAttackWarning(game);
-  const warningX = await playerAxis(game, 'x');
+  const target = game.target(correctAt(1, 1));
+  const shotPoint = await center(target, false);
+  const warningX = await arenaAxis(game.player, 'x');
   await device.send('Input.dispatchTouchEvent', {
     type: 'touchStart',
     touchPoints: [{ ...movePoint, id: 1 }, { ...shotPoint, id: 2 }],
   });
-  await game.state('breaking');
-  await expect.poll(() => playerAxis(game, 'x')).toBeGreaterThan(warningX + 17);
-  await finishStep(game, 1, 1, 3);
+  await expectHits(game, 1);
+  await expect.poll(() => arenaAxis(game.player, 'x')).toBeGreaterThan(warningX + 17);
+  await page.waitForFunction(() => document.querySelector('[data-arena]')?.dataset.attack === 'impact', null,
+    { timeout: 3500 });
+  await expect(game.field('shields')).toHaveText('3');
+  await expectHits(game, 1);
   await touchEnd();
-  console.log('PASS mobile touch movement, readable layout, and two-finger dodge while holding a shot');
+  for (const hit of [2, 3]) {
+    await touchStart(target, false);
+    await touchEnd();
+    await expectHits(game, hit);
+  }
+  await game.state('step-cleared');
+  await finishStep(game, 1, 1, 3);
+  console.log('PASS mobile layout, three distinct taps, and two-finger dodging while independently shooting');
+}
+
+async function inspectReducedMotion(page) {
+  const game = await open(page);
+  await game.start('1.1').click();
+  await atQuestion(game, 1, 1, 3);
+  const position = await game.foe.boundingBox();
+  assert(position, 'The monster should remain visible with reduced motion');
+  await page.waitForTimeout(300);
+  assert.deepEqual(await game.foe.boundingBox(), position, 'Reduced motion should keep the monster from patrolling');
+  await shoot(page, game.target(correctAt(1, 1)));
+  await expectHits(game, 1);
+  console.log('PASS reduced motion keeps targets still and shooting remains available');
 }
 
 function normalizedAnswer(text) {
@@ -470,25 +497,6 @@ async function verifyQuestionReference(page, game, sourceId) {
   }
 }
 
-async function advanceLongLevel(page, game) {
-  let heldKey;
-  try {
-    for (let remaining = 2510; remaining > 0; remaining -= 500) {
-      const warning = await game.arena.getAttribute('data-attack') === 'warning';
-      if (warning && !heldKey) {
-        heldKey = await playerAxis(game, 'x') < 50 ? 'd' : 'a';
-        await page.keyboard.down(heldKey);
-      } else if (!warning && heldKey) {
-        await page.keyboard.up(heldKey);
-        heldKey = undefined;
-      }
-      await page.clock.runFor(Math.min(500, remaining));
-    }
-  } finally {
-    if (heldKey) await page.keyboard.up(heldKey);
-  }
-}
-
 async function playThroughSection(page, game, sectionId, levels) {
   await game.start(sectionId).press('Enter');
 
@@ -508,10 +516,13 @@ async function playThroughSection(page, game, sectionId, levels) {
         const sourceValue = sourceQuestions.get(sourceId).answer.value;
         assert.equal(normalizedAnswer(answerText), normalizedAnswer(sourceValue), `${sourceId} final game answer`);
       }
-      await game.target(answer).press('Enter');
-      await game.state('breaking');
-      if (answers.length > 4) await advanceLongLevel(page, game);
-      else await page.clock.runFor(2510);
+      await expectHits(game, 0);
+      for (const hit of [1, 2, 3]) {
+        await game.target(answer).press('Enter');
+        await expectHits(game, hit);
+        await game.state(hit === 3 ? 'step-cleared' : 'question');
+      }
+      await page.clock.runFor(500);
     }
     await verifyReview(page, game, level);
     await game.action('next').press('Enter');
@@ -546,8 +557,11 @@ async function inspectFullSections(page) {
   await page.clock.runFor(1260);
   await atQuestion(game, 1, 1, 3, '1.2');
   await game.target(['A', 'B', 'C'].find(letter => letter !== fractionEncounters[0].answers[0])).press('Enter');
-  await game.state('counter');
-  await expect(game.field('shields')).toHaveText('2');
+  await atQuestion(game, 1, 1, 3, '1.2');
+  await expectHits(game, 0);
+  await expect(game.field('feedback')).toContainText(/^Incorrect\./);
+  await game.target(fractionEncounters[0].answers[0]).press('Enter');
+  await expectHits(game, 1);
 
   await game.action('choose').press('Enter');
   await game.state('intro');
@@ -562,8 +576,8 @@ async function inspectFullSections(page) {
   await page.clock.runFor(1260);
   await atQuestion(game, 1, 1, 3, '1.2');
   await expect(game.root.locator('[data-results] li')).toHaveCount(0);
-  await expect(game.charge).toHaveJSProperty('value', 0);
-  console.log('PASS replay keeps the same section and switching resets health, charge, and progress');
+  await expectHits(game, 0);
+  console.log('PASS replay keeps the same section and switching resets health, hits, and progress');
 }
 
 try {
@@ -595,6 +609,10 @@ try {
   const mobileContext = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const mobile = await mobileContext.newPage();
   await inspectTouch(mobileContext, mobile);
+  await mobileContext.close();
+
+  const reducedMotion = await browser.newPage({ reducedMotion: 'reduce', viewport: { width: 1280, height: 900 } });
+  await inspectReducedMotion(reducedMotion);
   assert.deepEqual(issues, [], 'The challenge must load without browser or resource errors');
 } finally {
   await browser.close();

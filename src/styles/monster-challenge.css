@@ -516,6 +516,7 @@
 }
 
 .monster-target {
+  position: relative;
   display: grid;
   place-items: center;
   flex: 0 0 auto;
@@ -535,17 +536,57 @@
   user-select: none;
 }
 
-.monster-target[aria-disabled='false']:hover,
-.monster-target:focus-visible {
+[data-arena], .monster-target[aria-disabled='false'] { cursor: crosshair; }
+
+.monster-target:where([aria-disabled='false']:hover, :focus-visible) {
   border-color: var(--game-cyan);
   background: #284961;
   outline-color: var(--game-cyan);
 }
 
 .monster-target[aria-disabled='true'] { cursor: default; }
-.monster-target[data-hit='correct'] { border-color: #9cfff0; box-shadow: 0 0 17px #75f6e7c4, inset 0 0 0 3px #214f55; color: #b9fff3; }
-.monster-target[data-hit='wrong'] { border-color: #ffa5a0; box-shadow: 0 0 17px #ff826ebf, inset 0 0 0 3px #603a50; color: #ffd7cf; }
+.monster-target[data-hit='correct'] {
+  border-color: #9cfff0;
+  background: radial-gradient(circle at 44% 35%, #29796a, #153d45 72%);
+  box-shadow: 0 0 17px #75f6e7c4, inset 0 0 0 3px #214f55;
+  color: #b9fff3;
+}
+.monster-target[data-hit='wrong'] {
+  border-color: #ffa5a0;
+  background: radial-gradient(circle at 44% 35%, #995050, #542b42 72%);
+  box-shadow: 0 0 17px #ff826ebf, inset 0 0 0 3px #603a50;
+  color: #ffd7cf;
+}
+.monster-target[data-hit='wrong']::before {
+  position: absolute;
+  inset: -3px -3px auto auto;
+  display: grid;
+  width: 18px;
+  aspect-ratio: 1;
+  place-items: center;
+  border: 1px solid #ffa5a0;
+  border-radius: 50%;
+  background: #6b3042;
+  color: #fff1ed;
+  font: 750 14px/1 system-ui, sans-serif;
+  pointer-events: none;
+  content: '×';
+}
+.monster-target[data-flash]::after {
+  position: absolute;
+  inset: -5px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  animation: monster-hit-pulse .24s ease-out both;
+  pointer-events: none;
+  content: '';
+}
 [data-state='step-cleared'] .monster-target[data-hit='correct'] { animation: monster-break .45s ease-out both; }
+
+@keyframes monster-hit-pulse {
+  from { transform: scale(.85); opacity: 1; }
+  to { transform: scale(1.35); opacity: 0; }
+}
 
 @keyframes monster-break {
   0% { transform: scale(1); }
@@ -565,7 +606,6 @@
   pointer-events: none;
 }
 
-.monster-beam[data-kind='counter'] { color: #ff9a8c; }
 .monster-beam:not([data-kind]) { visibility: hidden; }
 .monster-beam line { stroke: currentColor; stroke-width: 3px; stroke-linecap: round; vector-effect: non-scaling-stroke; }
 
@@ -742,9 +782,7 @@
   font-size: .82rem;
 }
 
-.monster-feedback[data-kind='wrong'],
-[data-state='counter'] .monster-feedback,
-[data-state='empty'] .monster-feedback {
+.monster-feedback[data-kind='wrong'] {
   border-color: #f0c1ac;
   background: #fff1e9;
   color: #813e26;
@@ -784,10 +822,27 @@
 .monster-score { display: inline-block; margin-right: 4px; color: #076059; font-size: 1.16em; }
 
 .monster-recover { margin-top: 10px; }
-.monster-charge { display: flex; align-items: center; gap: 8px; justify-content: end; }
-.monster-game:not([data-state='breaking']) .monster-charge { visibility: hidden; }
-.monster-charge progress {
-  width: clamp(54px, 12vw, 105px);
+.monster-hit-count {
+  position: absolute;
+  z-index: 5;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  border: 1px solid #37546b;
+  border-radius: 8px;
+  background: #0a1930eb;
+  font-size: .72rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.monster-game[data-state='approach'] .monster-hit-count { visibility: hidden; }
+.monster-hit-count strong { color: #e6f4f7; }
+.monster-hit-count progress {
+  width: clamp(36px, 8vw, 80px);
   height: 10px;
   overflow: hidden;
   border: 0;
@@ -795,13 +850,17 @@
   accent-color: #32a99f;
   background: #294763;
 }
-.monster-charge progress::-webkit-progress-bar { background: #294763; border-radius: 10px; }
-.monster-charge progress::-webkit-progress-value { background: #83f0e3; border-radius: 10px; }
+.monster-hit-count progress::-webkit-progress-bar { background: #294763; border-radius: 10px; }
+.monster-hit-count progress::-webkit-progress-value { background: #83f0e3; border-radius: 10px; }
 
 @media (pointer: coarse), (max-width: 700px) {
   .monster-dpad { display: grid; }
   .monster-keys { display: none; }
-  .monster-charge { flex-direction: column; gap: 3px; align-items: flex-start; }
+}
+
+@media (pointer: fine) {
+  [data-state='question'] [data-arena],
+  .monster-target[aria-disabled='false'] { cursor: crosshair; }
 }
 
 @media (max-width: 790px) {
@@ -838,6 +897,7 @@
 @media (prefers-reduced-motion: reduce) {
   [data-state='approach'] [data-arena] .monster-foe,
   [data-final-armor] [data-arena] .monster-foe,
+  .monster-target[data-flash]::after,
   [data-state='step-cleared'] .monster-target[data-hit='correct'],
   [data-attack] .monster-attack-marker { animation: none; }
 }
