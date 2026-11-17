@@ -1,195 +1,304 @@
 ---
-import Layout from '../layouts/Layout.astro';
-import { challengeSections } from '../data/monster-challenge-sections';
-import { choiceKeys } from '../data/monster-challenge-types';
-import { questionById, questionUrl, sectionUrl, sections, url } from '../lib/content';
-import '../styles/monster-challenge.css';
+import { shooterData } from '../data/monster-shooter';
+import { url } from '../lib/content';
 
-const sectionCards = challengeSections.map(({ id, levels }) => ({ section: sections.find(item => item.id === id)!, levels }));
-const sectionLinks = Object.fromEntries(sectionCards.map(({ section }) => [section.id, sectionUrl(section)]));
-const encounters = challengeSections.flatMap(({ levels }) => levels);
-const sources = Object.fromEntries(encounters.map(({ sourceId }) => [sourceId, questionUrl(questionById.get(sourceId)!)]));
-const figures = Object.fromEntries(encounters.flatMap(({ sourceId, figure }) => figure ? [[sourceId, url(figure.source)]] : []));
-const directions = [
-  { key: 'up', arrow: '↑', label: 'Move up' },
-  { key: 'left', arrow: '←', label: 'Move left' },
-  { key: 'down', arrow: '↓', label: 'Move down' },
-  { key: 'right', arrow: '→', label: 'Move right' },
-] as const;
+const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 ---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>AMC 8 Monster Shooter</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%234ade80'/%3E%3Ccircle cx='32' cy='27' r='11' fill='%23fff'/%3E%3Ccircle cx='32' cy='29' r='5' fill='%230f172a'/%3E%3C/svg%3E">
+<style is:inline>
+  :root {
+    --bg: #060a17; --card: #121b36; --line: #24304f;
+    --ink: #e8eeff; --muted: #9aa8c7;
+    --a: #38bdf8; --b: #fbbf24; --c: #f472b6;
+    --ok: #34d399; --bad: #f87171; --gold: #fde047;
+    --font: "Segoe UI", system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; color: var(--ink); font-family: var(--font);
+    background: radial-gradient(1500px 900px at 50% 30%, #0c1634, var(--bg) 70%) var(--bg);
+    overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none;
+    -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  button { font: inherit; color: inherit; }
+  a { color: var(--a); }
 
-<Layout title="Monster Challenge">
-  <div class="monster-game" data-challenge data-state="intro" data-sources={JSON.stringify(sources)} data-figures={JSON.stringify(figures)} data-section-links={JSON.stringify(sectionLinks)}>
-    <nav class="monster-navigation" aria-label="Challenge navigation">
-      <a class="monster-back" href={url()} data-workbook-link><span aria-hidden="true">←</span> <span data-field="workbook-back">Back to workbook</span></a>
-      <button type="button" class="monster-button" data-action="choose" hidden>Choose section</button>
-    </nav>
-    <header class="monster-heading">
-      <div>
-        <p class="monster-kicker">AMC 8</p>
-        <h1>Monster Challenge</h1>
-      </div>
-      <button type="button" class="monster-button monster-language" data-action="language" aria-pressed="false" lang="zh">中文辅助</button>
-    </header>
+  /* Chinese help lines: always in the markup, shown only when the toggle is on */
+  .zh { display: none; }
+  body.show-zh .zh { display: block; margin-top: .15em; color: var(--muted); font-size: .86em; font-weight: 400; line-height: 1.45; }
+  body.show-zh .zh-inline { display: inline; margin: 0; font-size: 1em; color: inherit; font-weight: inherit; }
 
-    <section class="monster-intro" data-panel="intro" aria-labelledby="monster-intro-title">
-      <div class="monster-arena monster-intro-art" aria-hidden="true">
-        <div class="monster-platform"></div>
-        <div class="monster-foe monster-intro-foe">
-          <div class="monster-horn monster-horn--left"></div>
-          <div class="monster-horn monster-horn--right"></div>
-          <div class="monster-claw monster-claw--left"></div>
-          <div class="monster-claw monster-claw--right"></div>
-          <div class="monster-hull"></div>
-          <div class="monster-eyeplate"><i></i><i></i><i></i></div>
-          <div class="monster-targets">
-            {choiceKeys.map(choice => <span class="monster-target">{choice}</span>)}
-          </div>
-        </div>
-        <div class="monster-player">
-          <span class="monster-player-body"></span>
-          <span class="monster-player-helmet"></span>
-          <span class="monster-blaster"></span>
-        </div>
-      </div>
-      <div class="monster-intro-copy">
-        <h2 id="monster-intro-title">Choose a section <span lang="zh">选择章节</span></h2>
-        <div class="monster-section-cards">
-          {sectionCards.map(({ section, levels }) => (
-            <button type="button" class="monster-section-card" data-start-section={section.id}>
-              <span class="monster-section-meta"><span>Section {section.id}</span><span>{levels.length} levels</span></span>
-              <strong>{section.titleEn}</strong>
-              <span class="monster-section-zh" lang="zh">{section.titleZh}</span>
-              <span class="monster-section-arrow" aria-hidden="true">→</span>
-            </button>
-          ))}
-        </div>
-        <ul>
-          <li><strong>Move</strong> with WASD, arrow keys, or the touch controls.</li>
-          <li><strong>Shoot</strong> by clicking or tapping a moving A, B, or C target. With a keyboard, tab to a target and press Enter for each shot.</li>
-          <li><strong>Break the armor</strong> with three correct hits per step. A wrong answer gives you a hint.</li>
-          <li><strong>Dodge</strong> when the monster marks a ring under you.</li>
-        </ul>
-      </div>
-    </section>
+  .frac { display: inline-flex; flex-direction: column; vertical-align: middle; text-align: center; font-size: .8em; line-height: 1.08; margin: 0 .14em; }
+  .frac > span:first-child { border-bottom: 1.5px solid currentColor; padding: 0 .28em .04em; }
+  .frac > span:last-child { padding: .04em .28em 0; }
 
-    <section class="monster-stage" data-panel="game" aria-label="Monster encounter" hidden>
-      <section class="monster-question" aria-label="Problem and answer choices">
-        <h2 data-field="strategy"></h2>
-        <p class="monster-stem" data-field="stem"></p>
-        <p class="challenge-zh" lang="zh" data-field="stem-zh" hidden></p>
-        <button type="button" class="question-image-button monster-figure" data-level-figure aria-label="Enlarge question figure" aria-describedby="monster-figure-description" hidden>
-          <img data-level-figure-image alt="" />
-        </button>
-        <p class="sr-only" id="monster-figure-description" hidden></p>
-        <table class="monster-number-grid" data-level-grid aria-label="Number array from the question" hidden><tbody></tbody></table>
-        <ol class="monster-unlocked" data-results aria-label="Steps completed"></ol>
-        <div class="monster-step" aria-label="Current step">
-          <span>Step <span data-field="step">1</span> of <span data-field="step-total"></span></span>
+  kbd { display: inline-block; min-width: 1.7em; padding: 1px 6px; margin: 0 1px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 6px; background: var(--card); color: var(--ink); font: 600 .92em var(--font); text-align: center; }
+  .chip { border: 1px solid var(--line); background: rgba(18, 27, 54, .9); border-radius: 999px; padding: .42em .95em; font-size: 13px; line-height: 1.2; cursor: pointer; white-space: nowrap; }
+  .chip:hover { border-color: var(--muted); }
+  .chip[aria-pressed="true"] { border-color: var(--a); color: var(--a); }
+  .chip:focus-visible, .btn:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  /* ------------------------------------------------------------ stage
+     One screen, read top to bottom: HUD, question card, monster with one answer per part, player.
+     --u is the canvas scale, set from game.js, so the card grows and shrinks with the scene. */
+  #app { height: 100vh; height: 100dvh; }
+  .stage-wrap { height: 100%; display: grid; place-items: center; padding: 14px; overflow: hidden; }
+  .stage { position: relative; --u: 1; }
+  .scene { position: relative; border-radius: 18px; overflow: hidden; background: #0b1230; box-shadow: 0 0 0 1px var(--line), 0 24px 60px rgba(0, 0, 0, .5); }
+  #arena { display: block; width: 100%; height: 100%; touch-action: none; }
+  #app[data-screen="play"] #arena { cursor: none; }
+
+  .corner { position: absolute; z-index: 4; right: calc(14px * var(--u)); bottom: calc(9px * var(--u)); display: flex; align-items: center; gap: 8px; font-size: clamp(11px, calc(12px * var(--u)), 14px); }
+  .corner .chip { font-size: 1em; }
+  #app[data-layout="stacked"] .corner { position: static; order: 2; flex: none; align-self: flex-end; }
+  #app[data-screen="intro"] .corner, #app[data-screen="summary"] .corner { visibility: hidden; }
+  /* controls reminder beside the card; only when the scene is wide enough to have room there */
+  .legend { position: absolute; z-index: 2; left: calc(16px * var(--u)); top: calc(62px * var(--u)); display: grid; grid-template-columns: auto auto; gap: .45em .8em; align-items: center; color: var(--muted); font-size: clamp(10.5px, calc(12px * var(--u)), 14px); pointer-events: none; }
+  .legend span:nth-child(odd) { color: var(--ink); opacity: .75; font-weight: 600; }
+  .stage:not([data-wide]) .legend { visibility: hidden; }
+
+  /* ------------------------------------------------------------ question card */
+  .qcard { font-size: clamp(13.5px, calc(16px * var(--u)), 21px); line-height: 1.45; -webkit-user-select: text; user-select: text; scrollbar-width: thin; }
+  .qc-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .2em 1.2em; color: var(--muted); font-size: .68em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+  .q-type { color: var(--gold); }
+  .q-stem { margin-top: .15em; font-size: 1.16em; line-height: 1.4; text-wrap: balance; }
+  .q-stem.is-long { font-size: 1em; line-height: 1.45; }
+  .q-solved { display: flex; flex-wrap: wrap; justify-content: center; gap: .1em 1.2em; margin: .3em 0 0; padding: 0; list-style: none; color: #a7f3d0; font-size: .8em; }
+  .q-solved li::before { content: "✓ "; color: var(--ok); font-weight: 800; }
+  body.show-zh .q-solved .zh { display: inline; margin: 0; }
+  body.show-zh .q-solved .zh::before { content: " · "; }
+  .q-now { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: .3em .7em; margin-top: .45em; padding-top: .45em; border-top: 1px solid rgba(148, 163, 184, .24); }
+  .q-badge { flex: none; padding: .18em .85em; border-radius: 999px; background: var(--gold); color: #0b1020; font-size: .68em; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+  .q-prompt { margin: 0; font-size: 1.28em; font-weight: 700; line-height: 1.3; text-wrap: balance; }
+  .q-feedback { margin-top: .5em; padding: .4em .9em; border: 1px solid var(--line); border-radius: 10px; font-size: .9em; }
+  .q-feedback > b { margin-right: .7em; font-size: .78em; letter-spacing: .08em; text-transform: uppercase; }
+  .q-feedback[data-kind="wrong"] { border-color: rgba(248, 113, 113, .55); background: rgba(248, 113, 113, .13); }
+  .q-feedback[data-kind="wrong"] > b { color: var(--bad); }
+  .q-feedback[data-kind="right"] { border-color: rgba(52, 211, 153, .45); background: rgba(52, 211, 153, .11); }
+  .q-feedback[data-kind="right"] > b { color: var(--ok); }
+
+  /* wide screens: the card floats over the sky at the top of the scene; answers are on the monster's parts */
+  #app[data-layout="overlay"] .qcard {
+    position: absolute; z-index: 3; left: 50%; top: calc(54px * var(--u)); transform: translateX(-50%);
+    width: min(calc(900px * var(--u)), calc(100% - 28px)); max-height: calc(226px * var(--u)); overflow-y: auto;
+    padding: .55em 1.2em .7em; border: 1px solid rgba(125, 211, 252, .32); border-radius: 16px;
+    background: rgba(9, 15, 36, .9); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); text-align: center;
+  }
+  #app[data-layout="overlay"] .q-options { display: none; }
+
+  /* narrow screens: the card sits above the scene and also lists the answers, because canvas text gets too small */
+  #app[data-layout="stacked"] .stage { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; height: 100%; }
+  #app[data-layout="stacked"] .scene { border-radius: 12px; }
+  #app[data-layout="stacked"] .qcard { order: -1; flex: none; width: 100%; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); font-size: 14px; }
+  #app[data-layout="stacked"] .qc-meta, #app[data-layout="stacked"] .q-solved { justify-content: flex-start; }
+  #app[data-layout="stacked"] .q-now { display: block; }
+  #app[data-layout="stacked"] .q-prompt { margin-top: .35em; font-size: 1.15em; }
+  .q-options { display: grid; gap: 6px; width: 100%; margin: 8px 0 0; padding: 0; list-style: none; }
+  .opt { --k: var(--a); display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); line-height: 1.4; cursor: crosshair; touch-action: pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+  .opt[data-k="B"] { --k: var(--b); }
+  .opt[data-k="C"] { --k: var(--c); }
+  .opt-key { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--k); color: #0b1020; font-weight: 800; }
+  .opt-mark { font-style: normal; font-weight: 800; font-size: 18px; }
+  .opt.is-hover { border-color: var(--k); }
+  .opt.is-sealed { opacity: .55; cursor: default; }
+  .opt.is-sealed .opt-key { background: #475569; }
+  .opt.is-sealed .opt-text .en { text-decoration: line-through; }
+  .opt.is-sealed .opt-mark::after { content: "✗"; color: var(--bad); }
+  .opt.is-locked { border-color: var(--ok); background: rgba(52, 211, 153, .12); }
+  .opt.is-locked .opt-mark::after { content: "✓"; color: var(--ok); }
+
+  /* ------------------------------------------------------------ overlays */
+  .overlay { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 18px; overflow: auto; border-radius: 18px; background: rgba(6, 10, 23, .8); backdrop-filter: blur(4px); }
+  .overlay--full { position: fixed; z-index: 10; border-radius: 0; background: radial-gradient(1200px 700px at 30% 20%, rgba(56, 189, 248, .14), transparent 60%), rgba(6, 10, 23, .93); }
+  .card { width: min(100%, 580px); padding: 26px 28px; border: 1px solid var(--line); border-radius: 20px; background: var(--card); box-shadow: 0 30px 80px rgba(0, 0, 0, .55); -webkit-user-select: text; user-select: text; }
+  .kicker { margin: 0; color: var(--a); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+  .card h1 { margin: 6px 0 0; font-size: clamp(30px, 5vw, 46px); line-height: 1.05; letter-spacing: -.02em; }
+  .card h2 { margin: 8px 0 0; font-size: 24px; line-height: 1.25; }
+  .lead { margin: 12px 0 0; color: var(--muted); font-size: 16px; line-height: 1.55; }
+  .how { display: grid; gap: 10px; margin: 18px 0 0; padding: 0; list-style: none; counter-reset: how; }
+  .how li { counter-increment: how; display: grid; grid-template-columns: 32px 1fr; gap: 12px; align-items: start; font-size: 15px; line-height: 1.5; }
+  .how li::before { content: counter(how); display: grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--gold); color: #0b1020; font-weight: 800; }
+  .how b { display: block; }
+  .how span.en { color: var(--muted); }
+  .keys { margin: 18px 0 0; padding: 10px 14px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 13px; line-height: 2; }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; margin-top: 22px; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border: 0; border-radius: 12px; background: var(--gold); color: #0b1020; font-size: 16px; font-weight: 800; cursor: pointer; text-decoration: none; }
+  .btn:hover { filter: brightness(1.08); }
+  .link { font-size: 14px; }
+  .section-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
+  .section-choice { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #0b1430; cursor: pointer; }
+  .section-choice:hover, .section-choice[aria-current="true"] { border-color: var(--a); }
+  .section-choice small { color: var(--muted); }
+  .section-choice:focus-visible, .q-figure:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+  .q-figure { display: block; margin: .45em auto; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: white; cursor: zoom-in; }
+  .q-figure img { display: block; max-width: min(100%, 420px); max-height: 82px; object-fit: contain; }
+  .q-grid { margin: .45em auto; border-collapse: collapse; font-size: .82em; }
+  .q-grid td { min-width: 1.6em; padding: .1em .4em; border: 1px solid var(--line); text-align: center; }
+  .figure-dialog { width: min(800px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: var(--card); }
+  .figure-dialog::backdrop { background: rgba(4, 8, 18, .88); }
+  .figure-dialog form { text-align: right; }
+  .figure-dialog img { display: block; max-width: 100%; max-height: 66dvh; margin: 12px auto; border-radius: 5px; background: white; }
+  .figure-dialog p { margin: 8px 0 0; color: var(--muted); }
+
+  .stars { color: var(--gold); font-size: 34px; letter-spacing: 6px; line-height: 1.2; }
+  .stars .off { color: #334155; }
+  .stars--sm { font-size: 18px; letter-spacing: 2px; white-space: nowrap; }
+  .solution { display: grid; gap: 6px; margin: 14px 0 0; padding-left: 1.4em; font-size: 15px; line-height: 1.6; }
+  .solution li::marker { color: var(--ok); font-weight: 800; }
+  .official { margin: 12px 0 0; color: var(--muted); font-size: 13px; }
+  .hintbox { margin: 14px 0 0; padding: 12px 14px; border: 1px solid rgba(248, 113, 113, .5); border-radius: 12px; background: rgba(248, 113, 113, .1); font-size: 15px; line-height: 1.55; }
+
+  .tiles { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; margin-top: 18px; }
+  .tile { padding: 12px 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, .03); text-align: center; }
+  .tile strong { display: block; font-size: 24px; line-height: 1.2; }
+  .tile span { color: var(--muted); font-size: 12px; }
+  .results { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; }
+  .results li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 15px; line-height: 1.4; }
+  .results small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
+  .results small.miss { color: #fca5a5; }
+
+  @media (max-width: 880px), (max-aspect-ratio: 1/1) {
+    .stage-wrap { padding: 8px; }
+    .overlay { position: fixed; z-index: 10; border-radius: 0; }
+    .card { padding: 20px 18px; }
+    .tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+<div id="app" data-screen="intro" data-layout="overlay">
+
+  <main class="stage-wrap" id="stage-wrap">
+    <div class="stage" id="stage">
+      <div class="scene" id="scene">
+        <canvas id="arena" aria-label="Game arena"></canvas>
+        <div class="legend" id="legend" aria-hidden="true">
+          <span>Move</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+          <span>Aim</span><span><kbd>Mouse</kbd></span>
+          <span>Fire</span><span><kbd>Hold click</kbd></span>
+          <span>Keys only</span><span>hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span>
         </div>
-        <h3 class="monster-prompt" data-field="prompt" tabindex="-1"></h3>
-        <p class="challenge-zh" lang="zh" data-field="prompt-zh" hidden></p>
-        <ul class="monster-choices" aria-label="Answer choices">
-          {choiceKeys.map(choice => (
-            <li class="monster-choice">
-              <b aria-hidden="true">{choice}</b>
-              <span id={`monster-option-${choice}`} data-option={choice}></span>
-            </li>
-          ))}
-        </ul>
-        <div role="status" aria-atomic="true">
-          <p class="monster-feedback" data-field="feedback" hidden></p>
-          <p class="challenge-zh" lang="zh" data-field="feedback-zh" hidden></p>
+      </div>
+
+      <div class="corner" id="corner">
+        <button type="button" class="chip" id="btn-zh" aria-pressed="false" lang="zh">中文辅助</button>
+        <button type="button" class="chip" id="btn-sound" aria-pressed="true">Sound on</button>
+      </div>
+
+      <!-- the question: problem, steps solved so far, the current step and, after a wrong shot, its hint -->
+      <section class="qcard" id="qcard" hidden>
+        <div class="qc-meta"><span id="q-source"></span><span class="q-type" id="q-type" hidden></span></div>
+        <div class="q-stem" id="q-stem"></div>
+        <button class="q-figure" type="button" id="q-figure" aria-label="Enlarge question figure" hidden><img id="q-figure-image" alt=""></button>
+        <table class="q-grid" id="q-grid" aria-label="Number array from the question" hidden><tbody></tbody></table>
+        <ol class="q-solved" id="q-solved" hidden></ol>
+        <div class="q-now" id="q-now">
+          <span class="q-badge" id="q-badge"></span>
+          <h2 class="q-prompt" id="q-prompt"></h2>
+          <ul class="q-options" id="q-options"></ul>
         </div>
-        <button type="button" class="monster-button monster-button--primary monster-recover" data-action="recover" hidden>Continue this step</button>
+        <div class="q-feedback" id="q-feedback" role="status" aria-live="polite" hidden></div>
       </section>
 
-      <div class="monster-field">
-        <div class="monster-hud">
-          <div class="monster-hud-foe">
-            <span class="monster-hud-count"><span data-field="section-number"></span> · Level <span data-field="encounter">1</span> of <span data-field="encounter-total"></span></span>
-            <strong data-field="monster"></strong>
-          </div>
-          <div class="monster-hud-end">
-            <span class="monster-shields">
-              <span class="monster-shield-icons" aria-hidden="true"><i class="monster-shield"></i><i class="monster-shield"></i><i class="monster-shield"></i></span>
-              <span>Shields <strong data-field="shields">3</strong>/3</span>
-            </span>
-          </div>
-        </div>
-        <p class="monster-attack-status" role="status" aria-atomic="true">
-          <span data-attack-status>Watch for the warning ring.</span>
-          <span data-attack-status-zh lang="zh" hidden></span>
-        </p>
-        <div class="monster-arena" data-arena data-monster="0" aria-label="Arena">
-          <div class="monster-platform"></div>
-          <div class="monster-hit-count">
-            <span>Hits <strong data-field="hits">0 / 3</strong></span>
-            <progress data-charge max="3" value="0" aria-label="Correct hits for this step"></progress>
-          </div>
-          <div class="monster-attack-marker" data-attack-marker aria-hidden="true" hidden></div>
-          <div class="monster-player" data-player aria-hidden="true">
-            <span class="monster-player-body"></span>
-            <span class="monster-player-helmet"></span>
-            <span class="monster-blaster" data-muzzle></span>
-          </div>
-          <div class="monster-foe" data-foe>
-            <div class="monster-horn monster-horn--left"></div>
-            <div class="monster-horn monster-horn--right"></div>
-            <div class="monster-claw monster-claw--left"></div>
-            <div class="monster-claw monster-claw--right"></div>
-            <div class="monster-hull"></div>
-            <div class="monster-eyeplate" data-attack-emitter><i></i><i></i><i></i></div>
-            <div class="monster-targets" role="group" aria-label="Shoot an answer target">
-              {choiceKeys.map(choice => <button type="button" class="monster-target" data-target={choice} aria-label={`Target ${choice}`} aria-describedby={`monster-option-${choice}`} aria-disabled="true" hidden>{choice}</button>)}
-            </div>
-          </div>
-          <div class="monster-attack-projectile" data-attack-projectile aria-hidden="true" hidden></div>
-          <svg class="monster-beam" data-beam viewBox="0 0 1000 1000" preserveAspectRatio="none" aria-hidden="true">
-            <line data-beam-line x1="0" y1="0" x2="0" y2="0"></line>
-          </svg>
-        </div>
-        <div class="monster-controls">
-          <div class="monster-keys"><span>Move</span><kbd>W A S D</kbd><span>or</span><kbd>↑ ← ↓ →</kbd></div>
-          <div class="monster-dpad" role="group" aria-label="Touch movement">
-            {directions.map(({ key, arrow, label }) => <button type="button" aria-label={label} data-move={key}>{arrow}</button>)}
+      <!-- after a monster is defeated -->
+      <section class="overlay" id="ov-review" hidden>
+        <div class="card">
+          <p class="kicker" id="rv-kicker"></p>
+          <div class="stars" id="rv-stars" aria-hidden="true"></div>
+          <h2 id="rv-title"></h2>
+          <ol class="solution" id="rv-steps"></ol>
+          <p class="official" id="rv-answer"></p>
+          <div class="actions">
+            <button type="button" class="btn" id="btn-next" data-primary>Next monster →</button>
+            <a class="link" id="rv-link" target="_blank" rel="noopener">Original question ↗</a>
+            <a class="link" href={url('play/')}>Choose section</a>
           </div>
         </div>
-      </div>
-    </section>
+      </section>
 
-    <section class="monster-review" data-panel="review" aria-labelledby="monster-review-title" hidden>
-      <p class="monster-kicker">Armor cleared · <span data-field="review-source-id"></span></p>
-      <h2 id="monster-review-title" data-field="review-title" tabindex="-1"></h2>
-      <p class="challenge-zh" lang="zh" data-field="review-title-zh" hidden></p>
-      <ol data-review-steps></ol>
-      <div class="monster-review-actions">
-        <button type="button" class="monster-button monster-button--primary" data-action="next">Next monster</button>
-        <a class="monster-source" data-review-link href={url()} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
-      </div>
-    </section>
-
-    <section class="monster-summary" data-panel="summary" aria-labelledby="monster-summary-title" tabindex="-1" hidden>
-      <h2 id="monster-summary-title" data-field="summary-title">Challenge complete</h2>
-      <p><strong class="monster-score" data-field="score"></strong> steps correct on the first try</p>
-      {challengeSections.map(({ id, levels }) => (
-        <div class="monster-summary-list" data-section-review={id} hidden>
-          {levels.map(({ sourceId }) => (
-            <details data-review-card={sourceId}>
-              <summary data-card-title>{sourceId}</summary>
-              <ol data-card-steps></ol>
-              <a class="monster-source" href={sources[sourceId]} target="_blank" rel="noopener">Original question <span aria-hidden="true">↗</span></a>
-            </details>
-          ))}
+      <!-- out of hearts -->
+      <section class="overlay" id="ov-down" hidden>
+        <div class="card">
+          <p class="kicker" style="color: var(--bad)">Out of hearts</p>
+          <h2>The monster won this round<span class="zh" lang="zh">这一轮怪兽赢了</span></h2>
+          <p class="lead">Every wrong part costs a heart. Read the hint, think it through, then fire.<span class="zh" lang="zh">每打错一个部位就会掉一颗心。先读提示，想清楚再开火。</span></p>
+          <div class="hintbox" id="dn-hint"></div>
+          <div class="actions">
+            <button type="button" class="btn" id="btn-retry" data-primary>Try this monster again</button>
+            <a class="link" href={url('play/')}>Choose section</a>
+          </div>
         </div>
-      ))}
-      <div class="monster-summary-actions">
-        <button type="button" class="monster-button monster-button--primary" data-action="restart">Replay this section</button>
-      </div>
-    </section>
-  </div>
-</Layout>
+      </section>
+    </div>
+  </main>
 
-<script>
-  import '../scripts/monster-challenge';
-</script>
+  <!-- start screen -->
+  <section class="overlay overlay--full" id="ov-intro">
+    <div class="card">
+      <p class="kicker">AMC 8</p>
+      <h1>Monster Shooter</h1>
+      <p class="lead">Solve one AMC 8 problem per monster, one step at a time.<span class="zh" lang="zh">每只怪兽对应一道 AMC 8 真题，一步步解题过关。</span></p>
+      <div class="section-choices" role="group" aria-label="Choose a section">
+        {shooterData.sections.map((section, index) => (
+          <button class="section-choice" type="button" data-start-section={section.id} data-primary={index === 0 ? '' : undefined}>
+            <small>Section {section.id} · {section.encounters.length} levels</small>
+            <strong>{section.title.en}</strong>
+            <span lang="zh">{section.title.zh}</span>
+          </button>
+        ))}
+      </div>
+      <ol class="how">
+        <li><div><b>Read the step</b><span class="en">The card above the monster shows the problem and one small question.</span><span class="zh" lang="zh">怪兽上方的卡片会显示题目和一个小问题。</span></div></li>
+        <li><div><b>Shoot the right part</b><span class="en">Each part carries one answer. Hold fire on the right part to break it.</span><span class="zh" lang="zh">每个部位对应一个选项。按住正确选项持续开火，击破部位。</span></div></li>
+        <li><div><b>Think before you fire</b><span class="en">A wrong part strikes back: you lose a heart and get a hint. While you break a part, dodge the orbs.</span><span class="zh" lang="zh">打错部位会被反击：掉一颗心，并得到一条提示。击破部位时记得躲开能量球。</span></div></li>
+      </ol>
+      <p class="keys">
+        Move <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys · Aim with the mouse · Hold click to fire<br>
+        Keyboard only: hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · Touch: drag the lower arena to move, hold a part or answer to fire
+      </p>
+      <div class="actions">
+        <button type="button" class="chip" id="btn-zh-intro" aria-pressed="false" lang="zh">中文辅助</button>
+        <a class="link" id="intro-back-link" href={url()}>Back to workbook</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- results -->
+  <section class="overlay overlay--full" id="ov-summary" hidden>
+    <div class="card">
+      <p class="kicker" id="sm-kicker"></p>
+      <h1>Mission complete</h1>
+      <div class="tiles">
+        <div class="tile"><strong id="sm-stars"></strong><span>Stars</span></div>
+        <div class="tile"><strong id="sm-first"></strong><span>Steps right first time</span></div>
+        <div class="tile"><strong id="sm-time"></strong><span>Time</span></div>
+        <div class="tile"><strong id="sm-score"></strong><span>Score</span></div>
+      </div>
+      <ul class="results" id="sm-list"></ul>
+      <div class="actions">
+        <button type="button" class="btn" id="btn-again" data-primary>Play again</button>
+        <button type="button" class="chip" id="btn-choose">Choose section</button>
+        <a class="link" id="sm-link" target="_blank" rel="noopener">Section workbook ↗</a>
+      </div>
+    </div>
+  </section>
+  <dialog class="figure-dialog" id="figure-dialog" aria-label="Question figure">
+    <form method="dialog"><button type="submit" class="chip">Close figure</button></form>
+    <img id="figure-image" alt="">
+    <p id="figure-caption"></p>
+  </dialog>
+</div>
+
+<script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
+<script is:inline src={url('game/monster-shooter-v9.js')}></script>
+</body>
+</html>
