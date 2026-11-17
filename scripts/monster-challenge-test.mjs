@@ -42,6 +42,8 @@ const browser = await chromium.launch({
 });
 const issues = [];
 const checkedWorkbookHtml = new Map();
+const figureQuestions = new Set(['2025Q2', '2000Q8']);
+const gridQuestion = '2026Q2';
 
 async function withPage(options, test) {
   const context = await browser.newContext(options);
@@ -126,14 +128,39 @@ async function shoot(page, part, target) {
   }, { part, key: keyForPart[part], target });
 }
 
+async function verifyInitialPrompt(page, sourceId) {
+  const bounds = await page.locator('#qcard').evaluate(card => {
+    const cardTop = card.getBoundingClientRect().top + card.clientTop;
+    const top = Math.max(0, cardTop);
+    const bottom = Math.min(window.innerHeight, cardTop + card.clientHeight);
+    const badge = card.querySelector('#q-badge').getBoundingClientRect();
+    const prompt = card.querySelector('#q-prompt').getBoundingClientRect();
+    return {
+      scrollTop: card.scrollTop,
+      top,
+      bottom,
+      badgeTop: badge.top,
+      badgeBottom: badge.bottom,
+      promptTop: prompt.top,
+      promptBottom: prompt.bottom,
+    };
+  });
+  const diagnostic = sourceId + ' initial question card: ' + JSON.stringify(bounds);
+  assert.equal(bounds.scrollTop, 0, diagnostic);
+  assert(bounds.badgeTop >= bounds.top - 1 && bounds.badgeBottom <= bounds.bottom + 1, diagnostic);
+  assert(bounds.promptTop >= bounds.top - 1, diagnostic);
+  assert(bounds.promptBottom > bounds.promptTop && bounds.promptBottom <= bounds.bottom + 1, diagnostic);
+}
+
 async function verifyReference(page, sourceId) {
   const figure = page.locator('#q-figure');
   const dialog = page.locator('#figure-dialog');
   const grid = page.locator('#q-grid');
-  if (sourceId === '2025Q2' || sourceId === '2000Q8') {
+  if (figureQuestions.has(sourceId)) {
     await expect(figure).toBeVisible();
     await expect(figure.locator('img')).toHaveAttribute('alt', /\S/);
     await expect.poll(() => figure.locator('img').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
+    await verifyInitialPrompt(page, sourceId);
     await figure.press('Enter');
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('#figure-caption')).toContainText(/\S/);
@@ -147,8 +174,9 @@ async function verifyReference(page, sourceId) {
   } else {
     await expect(figure).toBeHidden();
   }
-  if (sourceId === '2026Q2') {
+  if (sourceId === gridQuestion) {
     await expect(grid).toBeVisible();
+    await verifyInitialPrompt(page, sourceId);
     await expect(grid.locator('tbody tr')).toHaveCount(5);
     await expect(grid.locator('td')).toHaveCount(35);
     const entries = await grid.locator('td').allTextContents();
@@ -250,6 +278,26 @@ async function testRetry(page) {
   console.log('PASS incorrect answers, feedback, knockout, and retry');
 }
 
+async function inspectMobileReferences(page) {
+  await openChooser(page);
+  await page.locator('#btn-zh-intro').tap();
+  await clickWhenReady(page, startButton(page, '1.1'));
+  const remaining = new Set([...figureQuestions, gridQuestion]);
+  for (const [sourceId, answers] of levelsBySection['1.1']) {
+    await advanceTo(page, 'think');
+    if (remaining.delete(sourceId)) await verifyReference(page, sourceId);
+    if (!remaining.size) break;
+    for (const [step, answer] of Array.from(answers).entries()) {
+      await shoot(page, answer, 'stepClear');
+      await advanceTo(page, step === answers.length - 1 ? 'review' : 'think');
+    }
+    await clickWhenReady(page, page.locator('#btn-next'));
+  }
+  assert.equal(remaining.size, 0);
+  const { width, height } = page.viewportSize();
+  console.log('PASS bilingual prompts fit initially on ' + width + '×' + height + ' for both figures and the grid');
+}
+
 async function inspectTouch(page) {
   await openChooser(page);
   await page.locator('#btn-zh-intro').tap();
@@ -257,7 +305,7 @@ async function inspectTouch(page) {
   await startButton(page, '1.1').tap();
   await advanceTo(page, 'think');
   await expect(page.locator('#app')).toHaveAttribute('data-layout', 'stacked');
-  assert.equal(await page.locator('#qcard').evaluate(card => card.scrollTop), 0);
+  await verifyInitialPrompt(page, '2010Q1');
   await expect(page.locator('#q-stem .zh')).toBeVisible();
 
   const session = await page.context().newCDPSession(page);
@@ -315,6 +363,7 @@ try {
     }
     console.log('PASS existing workbook entry URLs, recommended sections, and back links');
     await openChooser(page);
+    await page.locator('#btn-zh-intro').click();
     await playSection(page, '1.1');
     await clickWhenReady(page, page.locator('#btn-choose'));
     await expectScreen(page, 'intro');
@@ -327,6 +376,9 @@ try {
     }), ['2012Q4', 0, 0, 5, 0]);
   });
   await withPage({ viewport: { width: 1280, height: 900 } }, testRetry);
+  for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
+    await withPage({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, inspectMobileReferences);
+  }
   await withPage({ viewport: { width: 320, height: 568 }, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, inspectTouch);
   assert.deepEqual(issues, [], 'The game must load without browser or resource errors');
 } finally {

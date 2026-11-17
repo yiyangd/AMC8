@@ -75,7 +75,8 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .q-solved li::before { content: "✓ "; color: var(--ok); font-weight: 800; }
   body.show-zh .q-solved .zh { display: inline; margin: 0; }
   body.show-zh .q-solved .zh::before { content: " · "; }
-  .q-now { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: .3em .7em; margin-top: .45em; padding-top: .45em; border-top: 1px solid rgba(148, 163, 184, .24); }
+  .q-now { margin-top: .45em; padding-top: .45em; border-top: 1px solid rgba(148, 163, 184, .24); }
+  .q-heading { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: .3em .7em; }
   .q-badge { flex: none; padding: .18em .85em; border-radius: 999px; background: var(--gold); color: #0b1020; font-size: .68em; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
   .q-prompt { margin: 0; font-size: 1.28em; font-weight: 700; line-height: 1.3; text-wrap: balance; }
   .q-feedback { margin-top: .5em; padding: .4em .9em; border: 1px solid var(--line); border-radius: 10px; font-size: .9em; }
@@ -87,20 +88,32 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 
   /* wide screens: the card floats over the sky at the top of the scene; answers are on the monster's parts */
   #app[data-layout="overlay"] .qcard {
+    display: flex; flex-direction: column;
     position: absolute; z-index: 3; left: 50%; top: calc(54px * var(--u)); transform: translateX(-50%);
-    width: min(calc(900px * var(--u)), calc(100% - 28px)); max-height: calc(226px * var(--u)); overflow-y: auto;
+    width: min(calc(900px * var(--u)), calc(100% - 28px)); max-height: calc(226px * var(--u)); overflow: hidden;
     padding: .55em 1.2em .7em; border: 1px solid rgba(125, 211, 252, .32); border-radius: 16px;
     background: rgba(9, 15, 36, .9); box-shadow: 0 10px 30px rgba(0, 0, 0, .35); text-align: center;
   }
   #app[data-layout="overlay"] .q-options { display: none; }
+  #app[data-layout="overlay"] .q-reference { min-height: 0; overflow: auto; scrollbar-width: thin; }
+  #app[data-layout="overlay"] .qcard[data-reference] .q-reference { display: grid; grid-template-columns: minmax(0, 1fr) minmax(9.5em, 30%); align-items: start; gap: .85em; }
+  #app[data-layout="overlay"] .qcard[data-reference] .q-copy { text-align: left; }
+  #app[data-layout="overlay"] .qcard[data-reference] .qc-meta, #app[data-layout="overlay"] .qcard[data-reference] .q-solved { justify-content: flex-start; }
+  #app[data-layout="overlay"] .q-now { flex: none; }
+  #app[data-layout="overlay"] .q-feedback { min-height: 0; max-height: calc(54px * var(--u)); overflow-y: auto; }
 
   /* narrow screens: the card sits above the scene and also lists the answers, because canvas text gets too small */
   #app[data-layout="stacked"] .stage { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; height: 100%; }
   #app[data-layout="stacked"] .scene { border-radius: 12px; }
   #app[data-layout="stacked"] .qcard { order: -1; flex: none; width: 100%; overflow-y: auto; padding: 10px 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--card); font-size: 14px; }
   #app[data-layout="stacked"] .qc-meta, #app[data-layout="stacked"] .q-solved { justify-content: flex-start; }
-  #app[data-layout="stacked"] .q-now { display: block; }
+  #app[data-layout="stacked"] .q-heading { display: block; }
   #app[data-layout="stacked"] .q-prompt { margin-top: .35em; font-size: 1.15em; }
+  #app[data-layout="stacked"] .qcard[data-prompt-first] { display: flex; flex-direction: column; }
+  #app[data-layout="stacked"] .qcard[data-prompt-first] .q-now { display: contents; }
+  #app[data-layout="stacked"] .qcard[data-prompt-first] .q-heading { order: -1; margin-bottom: .55em; padding-bottom: .55em; border-bottom: 1px solid rgba(148, 163, 184, .24); }
+  #app[data-layout="stacked"] .qcard[data-prompt-first] .q-options { order: 1; }
+  #app[data-layout="stacked"] .qcard[data-prompt-first] .q-feedback { order: 2; }
   .q-options { display: grid; gap: 6px; width: 100%; margin: 8px 0 0; padding: 0; list-style: none; }
   .opt { --k: var(--a); display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; border: 1.5px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); line-height: 1.4; cursor: crosshair; touch-action: pan-y; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
   .opt[data-k="B"] { --k: var(--b); }
@@ -139,8 +152,9 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .section-choice small { color: var(--muted); }
   .section-choice:focus-visible, .q-figure:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
 
-  .q-figure { display: block; margin: .45em auto; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: white; cursor: zoom-in; }
-  .q-figure img { display: block; max-width: min(100%, 420px); max-height: 82px; object-fit: contain; }
+  .q-figure { display: block; max-width: 100%; margin: .45em auto; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: white; cursor: zoom-in; }
+  .q-figure img { display: block; max-width: 100%; max-height: 82px; object-fit: contain; }
+  #app[data-layout="overlay"] .q-figure img { max-height: clamp(58px, calc(100px * var(--u)), 135px); }
   .q-grid { margin: .45em auto; border-collapse: collapse; font-size: .82em; }
   .q-grid td { min-width: 1.6em; padding: .1em .4em; border: 1px solid var(--line); text-align: center; }
   .figure-dialog { width: min(800px, calc(100% - 24px)); max-height: calc(100% - 24px); padding: 16px; border: 1px solid var(--line); border-radius: 14px; color: var(--ink); background: var(--card); }
@@ -165,6 +179,11 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .results li { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: center; padding: 9px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 15px; line-height: 1.4; }
   .results small { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; }
   .results small.miss { color: #fca5a5; }
+
+  @media (max-height: 360px) {
+    #app[data-layout="stacked"] .qcard[data-prompt-first] .q-heading { padding-bottom: .35em; margin-bottom: .35em; }
+    #app[data-layout="stacked"] .q-prompt { margin-top: .2em; font-size: 1.03em; line-height: 1.22; }
+  }
 
   @media (max-width: 880px), (max-aspect-ratio: 1/1) {
     .stage-wrap { padding: 8px; }
@@ -196,14 +215,22 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 
       <!-- the question: problem, steps solved so far, the current step and, after a wrong shot, its hint -->
       <section class="qcard" id="qcard" hidden>
-        <div class="qc-meta"><span id="q-source"></span><span class="q-type" id="q-type" hidden></span></div>
-        <div class="q-stem" id="q-stem"></div>
-        <button class="q-figure" type="button" id="q-figure" aria-label="Enlarge question figure" hidden><img id="q-figure-image" alt=""></button>
-        <table class="q-grid" id="q-grid" aria-label="Number array from the question" hidden><tbody></tbody></table>
-        <ol class="q-solved" id="q-solved" hidden></ol>
+        <div class="q-reference" id="q-reference">
+          <div class="q-copy">
+            <div class="qc-meta"><span id="q-source"></span><span class="q-type" id="q-type" hidden></span></div>
+            <div class="q-stem" id="q-stem"></div>
+            <ol class="q-solved" id="q-solved" hidden></ol>
+          </div>
+          <div class="q-media">
+            <button class="q-figure" type="button" id="q-figure" aria-label="Enlarge question figure" hidden><img id="q-figure-image" alt=""></button>
+            <table class="q-grid" id="q-grid" aria-label="Number array from the question" hidden><tbody></tbody></table>
+          </div>
+        </div>
         <div class="q-now" id="q-now">
-          <span class="q-badge" id="q-badge"></span>
-          <h2 class="q-prompt" id="q-prompt"></h2>
+          <div class="q-heading" id="q-heading">
+            <span class="q-badge" id="q-badge"></span>
+            <h2 class="q-prompt" id="q-prompt"></h2>
+          </div>
           <ul class="q-options" id="q-options"></ul>
         </div>
         <div class="q-feedback" id="q-feedback" role="status" aria-live="polite" hidden></div>
@@ -299,6 +326,6 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 </div>
 
 <script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
-<script is:inline src={url('game/monster-shooter-v9.js')}></script>
+<script is:inline src={url('game/monster-shooter-v9.js?v=2')}></script>
 </body>
 </html>

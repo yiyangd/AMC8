@@ -103,7 +103,7 @@
   const el = {
     app: $('app'), wrap: $('stage-wrap'), stage: $('stage'), scene: $('scene'), canvas: $('arena'), legend: $('legend'),
     card: $('qcard'), corner: $('corner'), source: $('q-source'), type: $('q-type'), stem: $('q-stem'), solved: $('q-solved'),
-    now: $('q-now'), badge: $('q-badge'), prompt: $('q-prompt'), options: $('q-options'), feedback: $('q-feedback'),
+    reference: $('q-reference'), now: $('q-now'), heading: $('q-heading'), badge: $('q-badge'), prompt: $('q-prompt'), options: $('q-options'), feedback: $('q-feedback'),
     figure: $('q-figure'), figurePreview: $('q-figure-image'), grid: $('q-grid'),
     figureDialog: $('figure-dialog'), figureImage: $('figure-image'), figureCaption: $('figure-caption'),
   };
@@ -292,6 +292,7 @@
     S.banner = { text: enc().monster.boss ? 'BOSS' : `MONSTER ${index + 1} / ${ENC.length}`, sub: enc().monster.name.en, t: 0, dur: 1.7 };
     setScreen('play'); setPhase('enter'); renderCard();
     el.card.scrollTop = 0;
+    el.reference.scrollTop = 0;
     sfx.roar();
   }
 
@@ -303,7 +304,7 @@
     setLabels();
     setPhase('rearm'); renderCard();
     revealInCard(el.badge, true);
-    attention(el.now, 'new');
+    attention(el.heading, 'new');
   }
 
   function startDying() {
@@ -1099,6 +1100,25 @@
     else if (bounds.bottom > bottom) card.scrollTop += bounds.bottom - bottom;
   }
 
+  /* On stacked screens, lead with the step when the reference would push it out of view. */
+  function updatePromptOrder() {
+    const card = el.card;
+    if (!view.stacked || card.hidden || el.now.hidden) return;
+    if (card.hasAttribute('data-reference')) {
+      card.setAttribute('data-prompt-first', '');
+      return;
+    }
+
+    const cardStyle = getComputedStyle(card);
+    const stepStyle = getComputedStyle(el.now);
+    const headingStyle = getComputedStyle(el.heading);
+    const available = card.clientHeight - parseFloat(cardStyle.paddingTop) - parseFloat(cardStyle.paddingBottom);
+    const separator = parseFloat(stepStyle.marginTop) + parseFloat(stepStyle.paddingTop) + parseFloat(stepStyle.borderTopWidth);
+    const headingHeight = el.heading.getBoundingClientRect().height - parseFloat(headingStyle.paddingBottom) - parseFloat(headingStyle.borderBottomWidth);
+    const referenceHeight = el.reference.getBoundingClientRect().height;
+    card.toggleAttribute('data-prompt-first', referenceHeight + separator + headingHeight > available + 1);
+  }
+
   /* Measure the floating card for the monster below it and the controls beside it. */
   function measureCard() {
     if (view.stacked || el.card.hidden) {
@@ -1121,6 +1141,7 @@
   function renderProblemMedia(encounter) {
     if (el.card.dataset.sourceId === encounter.id) return;
     el.card.dataset.sourceId = encounter.id;
+    el.card.toggleAttribute('data-reference', Boolean(encounter.figure || encounter.grid));
 
     el.figure.hidden = !encounter.figure;
     if (encounter.figure) {
@@ -1173,6 +1194,7 @@
     el.feedback.hidden = !f;
     if (f) { el.feedback.dataset.kind = f.kind; el.feedback.innerHTML = `<b>${esc(f.title)}</b>${bi(f.body)}`; }
     syncHover();
+    updatePromptOrder();
     measureCard();
   }
 
@@ -1293,6 +1315,7 @@
   function applyLanguage() {
     document.body.classList.toggle('show-zh', showZh);
     for (const id of ['btn-zh', 'btn-zh-intro']) $(id).setAttribute('aria-pressed', String(showZh));
+    updatePromptOrder();
   }
   function applySound() {
     $('btn-sound').setAttribute('aria-pressed', String(!audio.muted));
@@ -1329,12 +1352,12 @@
 
   // ================================================================ boot
   /* Fit the scene to the window. Wide windows: one tall canvas with sky at the top for the question card.
-     Narrow or portrait windows: the card sits above a shorter canvas. */
+     Narrow, portrait or short windows: the card sits above a shorter canvas. */
   function resize() {
     const cs = getComputedStyle(el.wrap);
     const wrapW = Math.max(1, el.wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight));
     const wrapH = el.wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom);
-    const stacked = wrapW < 720 || wrapW < wrapH * 1.02;
+    const stacked = wrapW < 720 || wrapW < wrapH * 1.02 || wrapH < 420;
     const layout = stacked ? 'stacked' : 'overlay';
     if (el.app.dataset.layout !== layout) el.app.dataset.layout = layout;
     view.stacked = stacked; view.top = stacked ? CFG.sky.stacked : CFG.sky.overlay;
@@ -1350,6 +1373,7 @@
       const minSceneH = Math.min(140, cardAndSceneH * 0.6);
       const cardH = Math.min(Math.max(wrapH * 0.4, cardAndSceneH - fullWidthSceneH), cardAndSceneH - minSceneH);
       el.card.style.maxHeight = `${Math.floor(cardH)}px`;
+      updatePromptOrder();
       if (!el.card.hidden) availH = cardAndSceneH - el.card.getBoundingClientRect().height;
     } else {
       el.card.style.maxHeight = '';
