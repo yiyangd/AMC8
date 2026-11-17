@@ -65,6 +65,21 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .legend span:nth-child(odd) { color: var(--ink); opacity: .75; font-weight: 600; }
   .stage:not([data-wide]) .legend { visibility: hidden; }
 
+  .history-slot { position: absolute; z-index: 2; top: calc(62px * var(--u)); right: calc(16px * var(--u)); width: clamp(144px, calc(134px * var(--u)), 205px); visibility: hidden; }
+  #app[data-screen="play"] .stage[data-side-history] .history-slot { visibility: visible; }
+  .history-slot .run-history { padding: .65em .8em; border: 1px solid var(--line); border-radius: 12px; background: rgba(9, 15, 36, .92); font-size: clamp(12px, calc(12px * var(--u)), 16px); }
+  .history-slot .history-list { max-height: calc(190px * var(--u)); }
+  .run-history h2 { margin: 0 0 .4em; font-size: 1em; line-height: 1.35; }
+  .history-empty { margin: 0; color: var(--muted); font-size: .9em; }
+  .history-list { margin: 0; padding: 0 .15em; list-style: none; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; font-variant-numeric: tabular-nums; }
+  .history-list:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
+  .history-list li { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding: .35em 0; white-space: nowrap; }
+  .history-list li + li { border-top: 1px solid var(--line); }
+  .history-stars { color: var(--gold); letter-spacing: .08em; }
+  .history-stars .off { color: #73839d; }
+  #app:not([data-screen="play"]) #history-toggle, .stage[data-side-history] #history-toggle { display: none; }
+  #app[data-layout="overlay"] #history-toggle { position: absolute; right: 0; bottom: calc(100% + 8px); }
+
   /* ------------------------------------------------------------ question card */
   .qcard { font-size: clamp(13.5px, calc(16px * var(--u)), 21px); line-height: 1.45; -webkit-user-select: text; user-select: text; scrollbar-width: thin; }
   .qc-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: .2em 1.2em; color: var(--muted); font-size: .68em; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -162,6 +177,10 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .figure-dialog form { text-align: right; }
   .figure-dialog img { display: block; max-width: 100%; max-height: 66dvh; margin: 12px auto; border-radius: 5px; background: white; }
   .figure-dialog p { margin: 8px 0 0; color: var(--muted); }
+  .history-dialog { width: min(340px, calc(100% - 24px)); }
+  .history-dialog form { position: absolute; top: 16px; right: 16px; }
+  .history-dialog h2 { margin: 2px 4em .8em 0; font-size: 17px; }
+  .history-dialog .history-list { max-height: min(50dvh, 360px); }
 
   .stars { color: var(--gold); font-size: 34px; letter-spacing: 6px; line-height: 1.2; }
   .stars .off { color: #334155; }
@@ -206,9 +225,17 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
           <span>Fire</span><span><kbd>Hold click</kbd></span>
           <span>Keys only</span><span>hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span>
         </div>
+        <div class="history-slot" id="history-slot">
+          <aside class="run-history" id="run-history" aria-labelledby="run-history-title">
+            <h2 id="run-history-title">Cleared monsters<span class="zh" lang="zh">已击败的怪兽</span></h2>
+            <p class="history-empty" id="history-empty">No clears yet<span class="zh" lang="zh">本轮还没有击败怪兽</span></p>
+            <ol class="history-list" id="run-history-list" tabindex="-1"></ol>
+          </aside>
+        </div>
       </div>
 
       <div class="corner" id="corner">
+        <button type="button" class="chip" id="history-toggle" aria-haspopup="dialog" aria-controls="history-dialog" aria-expanded="false">History</button>
         <button type="button" class="chip" id="btn-zh" aria-pressed="false" lang="zh">中文辅助</button>
         <button type="button" class="chip" id="btn-sound" aria-pressed="true">Sound on</button>
       </div>
@@ -323,9 +350,12 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
     <img id="figure-image" alt="">
     <p id="figure-caption"></p>
   </dialog>
+  <dialog class="figure-dialog history-dialog" id="history-dialog" aria-labelledby="run-history-title">
+    <form method="dialog"><button type="submit" class="chip" autofocus>Close</button></form>
+  </dialog>
 </div>
 
 <script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
-<script is:inline src={url('game/monster-shooter-v9.js?v=2')}></script>
+<script is:inline src={url('game/monster-shooter-v9.js?v=3')}></script>
 </body>
 </html>

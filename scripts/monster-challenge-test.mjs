@@ -205,9 +205,45 @@ async function verifyReview(page, sectionId, sourceId, stepCount) {
   assert(checkedWorkbookHtml.get(link.pathname).includes('id="' + anchor + '"'), 'Workbook anchor missing for ' + sourceId);
 }
 
+async function expectHistory(page, entries) {
+  const rows = page.locator('#run-history-list li');
+  await expect(rows).toHaveCount(entries.length);
+  const actual = await rows.evaluateAll(rows => rows.map(row => ({
+    id: row.dataset.sourceId,
+    label: row.querySelector('.history-question')?.textContent.trim(),
+    stars: row.querySelector('.history-stars')?.getAttribute('aria-label'),
+  })));
+  assert.deepEqual(actual, entries.map(([id, stars]) => ({
+    id,
+    label: id.replace('Q', ' · Q'),
+    stars: stars + ' of 3 stars',
+  })));
+}
+
+async function expectWideHistory(page) {
+  const sidebar = page.locator('#run-history');
+  await expect(sidebar).toBeVisible();
+  await expect(page.locator('#history-toggle')).toBeHidden();
+  const [arena, card, history] = await Promise.all([
+    page.locator('.scene').boundingBox(), page.locator('#qcard').boundingBox(), sidebar.boundingBox(),
+  ]);
+  assert(arena && card && history, 'Battle, question, and history must all be visible');
+  assert(history.x >= card.x + card.width + 7.5, 'History should sit to the right of the question card');
+  assert(history.x + history.width <= arena.x + arena.width + 1, 'History should fit inside the arena');
+}
+
+async function completeEncounter(page, answers) {
+  for (const answer of answers) {
+    await advanceTo(page, 'think');
+    await shoot(page, answer, 'stepClear');
+  }
+  await advanceTo(page, 'review');
+}
+
 async function playSection(page, sectionId) {
   const levels = levelsBySection[sectionId];
   await clickWhenReady(page, startButton(page, sectionId));
+  const history = [];
   const data = await page.evaluate(() => window.__shooter.ENC.map(encounter => ({
     sourceId: encounter.id,
     answer: encounter.steps.at(-1).options[encounter.steps.at(-1).correct].text.en,
@@ -220,6 +256,7 @@ async function playSection(page, sectionId) {
 
   for (const [index, [sourceId, answers]] of levels.entries()) {
     await advanceTo(page, 'think');
+    await expectHistory(page, history);
     await expect(page.locator('#q-source')).toContainText(new RegExp(sourceId.replace('Q', '.*Problem\\s+')));
     await verifyReference(page, sourceId);
     for (const [step, answer] of Array.from(answers).entries()) {
@@ -236,6 +273,8 @@ async function playSection(page, sectionId) {
       await advanceTo(page, step === answers.length - 1 ? 'review' : 'think');
     }
     await verifyReview(page, sectionId, sourceId, answers.length);
+    history.push([sourceId, 3]);
+    await expectHistory(page, history);
     await clickWhenReady(page, page.locator('#btn-next'));
   }
   const steps = levels.reduce((sum, [, answers]) => sum + answers.length, 0);
@@ -250,10 +289,19 @@ async function playSection(page, sectionId) {
 
 async function testRetry(page) {
   await openChooser(page);
+  const [[firstId, firstAnswers], [retryId, retryAnswers], [thirdId, thirdAnswers]] = levelsBySection['1.1'];
   await clickWhenReady(page, startButton(page, '1.1'));
   await advanceTo(page, 'think');
+  await expectHistory(page, []);
+  await expectWideHistory(page);
+  await completeEncounter(page, firstAnswers);
+  const history = [[firstId, 3]];
+  await expectHistory(page, history);
+  await clickWhenReady(page, page.locator('#btn-next'));
+  await advanceTo(page, 'think');
+  await expectWideHistory(page);
   let hearts = 5;
-  for (const answer of levelsBySection['1.1'][0][1]) {
+  for (const answer of retryAnswers) {
     for (const wrong of ['A', 'B', 'C'].filter(part => part !== answer)) {
       const result = await shoot(page, wrong, 'counter');
       assert.equal(result.hearts, --hearts);
@@ -269,13 +317,25 @@ async function testRetry(page) {
   }
   await advanceTo(page, 'down');
   await expect(page.locator('#dn-hint')).toBeVisible();
+  await expectHistory(page, history);
   await clickWhenReady(page, page.locator('#btn-retry'));
   await advanceTo(page, 'think');
   assert.deepEqual(await page.evaluate(() => {
     const { S } = window.__shooter;
-    return [S.ei, S.si, S.hearts, S.stats[0].retries];
-  }), [0, 0, 5, 1]);
-  console.log('PASS incorrect answers, feedback, knockout, and retry');
+    return [S.ei, S.si, S.hearts, S.stats[1].retries];
+  }), [1, 0, 5, 1]);
+  await expectHistory(page, history);
+  await completeEncounter(page, retryAnswers);
+  history.push([retryId, 1]);
+  await expectHistory(page, history);
+  await clickWhenReady(page, page.locator('#btn-next'));
+  await advanceTo(page, 'think');
+  await shoot(page, ['A', 'B', 'C'].find(part => part !== thirdAnswers[0]), 'counter');
+  await expectHistory(page, history);
+  await completeEncounter(page, thirdAnswers);
+  history.push([thirdId, 2]);
+  await expectHistory(page, history);
+  console.log('PASS incorrect answers, knockout and retry preserve history, with earned 3-, 1- and 2-star entries');
 }
 
 async function inspectMobileReferences(page) {
@@ -287,10 +347,7 @@ async function inspectMobileReferences(page) {
     await advanceTo(page, 'think');
     if (remaining.delete(sourceId)) await verifyReference(page, sourceId);
     if (!remaining.size) break;
-    for (const [step, answer] of Array.from(answers).entries()) {
-      await shoot(page, answer, 'stepClear');
-      await advanceTo(page, step === answers.length - 1 ? 'review' : 'think');
-    }
+    await completeEncounter(page, answers);
     await clickWhenReady(page, page.locator('#btn-next'));
   }
   assert.equal(remaining.size, 0);
@@ -352,6 +409,38 @@ async function inspectTouch(page) {
   await touch('touchEnd');
   assert.deepEqual(await page.evaluate(() => [__shooter.input.rowKey, __shooter.input.stick]), [null, null]);
   console.log('PASS touch scrolling from options, hold to break, simultaneous joystick and fresh trigger on next step');
+
+  const [sourceId, answers] = levelsBySection['1.1'][0];
+  await completeEncounter(page, answers.slice(1));
+  await clickWhenReady(page, page.locator('#btn-next'));
+  await advanceTo(page, 'think');
+  const historyToggle = page.locator('#history-toggle');
+  const historyList = page.locator('#run-history-list');
+  const historyDialog = page.locator('#history-dialog');
+  await expect(historyToggle).toBeVisible();
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(historyList).toBeHidden();
+  await historyToggle.tap();
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(historyList).toBeVisible();
+  await expect(historyDialog.locator('#run-history-list')).toBeVisible();
+  await expectHistory(page, [[sourceId, 3]]);
+  await expect(historyList.locator('.history-stars')).toHaveAccessibleName('3 of 3 stars');
+  assert(await page.evaluate(() => {
+    const game = window.__shooter;
+    const time = game.S.phaseT;
+    game.advance(2);
+    return game.S.phaseT === time;
+  }), 'History dialog should pause the battle');
+  await historyDialog.getByRole('button', { name: /close/i }).tap();
+  await expect(historyToggle).toHaveAttribute('aria-expanded', 'false');
+  await expect(historyList).toBeHidden();
+  await historyToggle.press('Space');
+  await expect(historyDialog).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(historyDialog).toBeHidden();
+  assert.deepEqual(await page.evaluate(() => [__shooter.S.ei, __shooter.S.phase, __shooter.S.hearts]), [1, 'think', 5]);
+  console.log('PASS compact history opens and closes without affecting the current encounter');
 }
 
 try {
@@ -370,12 +459,13 @@ try {
     await playSection(page, '1.2');
     await clickWhenReady(page, page.locator('#btn-again'));
     await advanceTo(page, 'think');
+    await expectHistory(page, []);
     assert.deepEqual(await page.evaluate(() => {
       const { S, ENC } = window.__shooter;
       return [ENC[0].id, S.ei, S.si, S.hearts, S.score];
     }), ['2012Q4', 0, 0, 5, 0]);
   });
-  await withPage({ viewport: { width: 1280, height: 900 } }, testRetry);
+  await withPage({ viewport: { width: 1600, height: 900 } }, testRetry);
   for (const viewport of [{ width: 390, height: 844 }, { width: 320, height: 568 }]) {
     await withPage({ viewport, isMobile: true, hasTouch: true, deviceScaleFactor: 2 }, inspectMobileReferences);
   }

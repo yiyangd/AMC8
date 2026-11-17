@@ -106,9 +106,12 @@
     reference: $('q-reference'), now: $('q-now'), heading: $('q-heading'), badge: $('q-badge'), prompt: $('q-prompt'), options: $('q-options'), feedback: $('q-feedback'),
     figure: $('q-figure'), figurePreview: $('q-figure-image'), grid: $('q-grid'),
     figureDialog: $('figure-dialog'), figureImage: $('figure-image'), figureCaption: $('figure-caption'),
+    historySlot: $('history-slot'), history: $('run-history'), historyList: $('run-history-list'), historyEmpty: $('history-empty'),
+    historyToggle: $('history-toggle'), historyDialog: $('history-dialog'),
   };
   const ov = { intro: $('ov-intro'), review: $('ov-review'), down: $('ov-down'), summary: $('ov-summary') };
   const ctx = el.canvas.getContext('2d');
+  const modalOpen = () => el.figureDialog.open || el.historyDialog.open;
   // cardBottom: lower edge of the floating question card in play-field coordinates (-Infinity when it does not float)
   const view = { scale: 1, dpr: 1, top: CFG.sky.overlay, stacked: false, cardBottom: -Infinity };
 
@@ -278,6 +281,7 @@
     ENC = section.encounters;
     audio.ensure();
     S.stats = newStats(); S.hearts = CFG.maxHearts; S.score = 0; S.runStart = performance.now();
+    renderHistory();
     startEncounter(0);
   }
 
@@ -328,6 +332,7 @@
   function showReview() {
     const e = enc(), st = S.stats[S.ei];
     st.stars = st.mistakes === 0 ? 3 : st.mistakes <= 2 ? 2 : 1;
+    renderHistory();
     S.hearts = Math.min(CFG.maxHearts, S.hearts + 1);
     $('rv-kicker').textContent = `Monster defeated · AMC 8 ${e.year} Problem ${e.number}`;
     $('rv-stars').innerHTML = starsHtml(st.stars);
@@ -337,6 +342,18 @@
     $('rv-link').href = e.url;
     $('btn-next').textContent = S.ei < ENC.length - 1 ? 'Next monster →' : 'See results →';
     setScreen('review'); renderCard(); sfx.win();
+  }
+
+  function renderHistory() {
+    el.historyList.innerHTML = ENC.map((e, i) => {
+      const { stars } = S.stats[i];
+      if (!stars) return '';
+      return `<li data-source-id="${esc(e.id)}"><span class="history-question">${e.year} · Q${e.number}</span><span class="history-stars" role="img" aria-label="${stars} of 3 stars">${starsHtml(stars)}</span></li>`;
+    }).join('');
+    const hasClears = el.historyList.childElementCount > 0;
+    el.historyEmpty.hidden = hasClears;
+    el.historyList.tabIndex = hasClears ? 0 : -1;
+    el.historyList.scrollTop = el.historyList.scrollHeight;
   }
 
   function showSummary() {
@@ -636,7 +653,7 @@
   }
 
   function update(dt) {
-    if (el.figureDialog.open) return;
+    if (modalOpen()) return;
     S.time += dt;
     updateFx(dt);
     if (S.screen === 'intro' || S.screen === 'down') { updateMonster(dt); return; }
@@ -1124,11 +1141,15 @@
     if (view.stacked || el.card.hidden) {
       view.cardBottom = -Infinity;
       el.stage.removeAttribute('data-wide');
+      el.stage.removeAttribute('data-side-history');
       return;
     }
     const card = el.card.getBoundingClientRect(), scene = el.scene.getBoundingClientRect();
     view.cardBottom = (card.bottom - scene.top) / view.scale - view.top;
     el.stage.toggleAttribute('data-wide', el.legend.getBoundingClientRect().right + 8 <= card.left);
+    const sideHistory = el.historySlot.getBoundingClientRect().left >= card.right + 8;
+    el.stage.toggleAttribute('data-side-history', sideHistory);
+    if (sideHistory && el.historyDialog.open) el.historyDialog.close();
   }
 
   /* Pull the eye to the card: a new step slides in, a wrong shot flashes the frame red. */
@@ -1217,9 +1238,10 @@
   }
 
   window.addEventListener('keydown', e => {
-    if (e.altKey || e.ctrlKey || e.metaKey || S.screen !== 'play' || el.figureDialog.open) return;
+    if (e.altKey || e.ctrlKey || e.metaKey || S.screen !== 'play' || modalOpen()) return;
+    if (e.target instanceof Node && el.history.contains(e.target)) return;
     const k = e.key.toLowerCase();
-    if (k === ' ' && e.target === el.figure) return;
+    if (k === ' ' && e.target instanceof HTMLButtonElement) return;
     if (MOVE_KEY[k] || FIRE_KEY[k] || k === ' ') e.preventDefault();
     if (e.repeat) return;
     if (MOVE_KEY[k]) input.keys.add(k);
@@ -1315,6 +1337,7 @@
   function applyLanguage() {
     document.body.classList.toggle('show-zh', showZh);
     for (const id of ['btn-zh', 'btn-zh-intro']) $(id).setAttribute('aria-pressed', String(showZh));
+    el.historyToggle.textContent = showZh ? '通关记录' : 'History';
     updatePromptOrder();
   }
   function applySound() {
@@ -1349,6 +1372,20 @@
     el.figureDialog.showModal();
   });
   el.figureDialog.addEventListener('close', clearInput);
+  el.historyToggle.addEventListener('click', () => {
+    if (modalOpen()) return;
+    clearInput();
+    el.historyDialog.append(el.history);
+    el.historyDialog.showModal();
+    el.historyToggle.setAttribute('aria-expanded', 'true');
+    el.historyList.scrollTop = el.historyList.scrollHeight;
+  });
+  el.historyDialog.addEventListener('close', () => {
+    el.historySlot.append(el.history);
+    el.historyToggle.setAttribute('aria-expanded', 'false');
+    el.historyList.scrollTop = el.historyList.scrollHeight;
+    clearInput();
+  });
 
   // ================================================================ boot
   /* Fit the scene to the window. Wide windows: one tall canvas with sky at the top for the question card.
