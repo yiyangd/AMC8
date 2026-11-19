@@ -30,11 +30,9 @@
     rowMoveLimit: 10,           // CSS pixels travelled before a touch becomes a gesture
     bulletSpeed: 1150,
     playerSpeed: 285,
-    stunSeconds: 0.7,           // an orb hit jams the blaster; it never costs a heart
-    orbGrace: 0.5,              // quiet time before the first orb of a break phase
-    orbInterval: i => Math.max(0.8, 1.2 - 0.08 * i),    // i = difficulty along the section
-    orbSpeed: i => 195 + 12 * i,
-    orbDifficultyMax: 5,
+    hitInvincible: 1.3,         // after an orb hit the player blinks and cannot be hit again for this long
+    orbGrace: 1.2,              // quiet time at the start of each step, and after a hint, before the first orb
+    orbRamp: 0.2,               // the last monster of a section fires up to 20% faster and more often than the first
     zone: { left: 34, top: 412, bottom: 552 },          // where the player may walk; the right edge is W - left
     actorScale: 1.2,                      // wide screens draw the monster, its parts and the player this much bigger
     monsterY: 136,                        // where the monster hovers when no card floats above it (narrow screens)
@@ -62,14 +60,23 @@
     keepFiring: T('Keep firing to break this part, and dodge the orbs.', '持续射击打掉这个部位，注意躲开能量球。'),
     status: {
       enter: T('A monster is coming…', '怪兽来了……'),
-      first: T('Read the question above, then shoot part A, B or C.', '先读上面的题目，再射击 A、B 或 C 部位。'),
-      think: T('Think first. Then aim at the right part and fire.', '先想清楚，再瞄准正确的部位开火。'),
+      first: T('Read the question and keep moving to dodge the orbs. Then shoot part A, B or C.', '读题时左右移动躲开能量球，再射击 A、B 或 C 部位。'),
+      think: T('Keep moving to dodge the orbs. Then shoot the right part.', '移动躲开能量球，再射击正确的部位。'),
       counter: T('Wrong part. It strikes back! Read the hint above.', '打错部位，它反击了！看看上面的提示。'),
       break: T('Weak point! Hold fire to break it. Dodge the orbs.', '命中弱点！持续开火打掉它，躲开能量球。'),
       stepClear: T('Part destroyed!', '部位击破！'),
       rearm: T('New parts are growing. Read the next step above.', '新的部位长出来了。读上面的下一步。'),
       dying: T('Monster defeated!', '怪兽被打败了！'),
     },
+    hitTip: T('Orb hits cost hearts too. Keep moving left and right while you think. If the orbs are too fast, choose Easy below.', '被能量球打中也会掉心。想题的时候要左右移动；如果太快，可以在下面选“简单”。'),
+  };
+
+  /* Difficulty: seconds between orbs and orb speed. `think` applies while the student works out a step,
+     `brk` while they break the right part. Chosen on the start screen or the out-of-hearts screen, and remembered. */
+  const LEVELS = {
+    easy: { label: T('Easy', '简单'), note: T('Slow orbs, easy to dodge', '能量球慢，容易躲'), think: 4.5, brk: 2.0, speed: 135, col: '#34d399' },
+    medium: { label: T('Medium', '中等'), note: T('Faster orbs, more often', '能量球更快、更密'), think: 2.6, brk: 1.3, speed: 190, col: '#fbbf24' },
+    hard: { label: T('Hard', '困难'), note: T('Fast orbs: keep moving', '又快又密，要一直移动'), think: 1.5, brk: 0.85, speed: 245, col: '#f87171' },
   };
 
   // ================================================================ helpers
@@ -112,6 +119,8 @@
     historyToggle: $('history-toggle'), historyDialog: $('history-dialog'),
   };
   const ov = { intro: $('ov-intro'), review: $('ov-review'), down: $('ov-down'), summary: $('ov-summary') };
+  // automated checks can switch orb hits off to test the content (set window.__shooterNoOrbHits before the page loads)
+  const debug = { noOrbHits: Boolean(window.__shooterNoOrbHits) };
   const ctx = el.canvas.getContext('2d');
   const modalOpen = () => el.figureDialog.open || el.historyDialog.open;
   // cardBottom: lower edge of the floating question card in play-field coordinates (-Infinity when it does not float)
@@ -158,7 +167,7 @@
     orb: () => audio.tone(240, 0.16, { type: 'sine', vol: 0.06, to: 420 }),
     lock: () => { audio.tone(523, 0.09, { type: 'triangle', vol: 0.1 }); audio.tone(784, 0.16, { type: 'triangle', vol: 0.1, delay: 0.08 }); },
     wrong: () => { audio.tone(200, 0.3, { type: 'sawtooth', vol: 0.08, to: 90 }); audio.noise(0.22, { vol: 0.1, cutoff: 700 }); },
-    stun: () => audio.tone(320, 0.22, { vol: 0.05, to: 140 }),
+    hurt: () => { audio.tone(260, 0.22, { type: 'sawtooth', vol: 0.07, to: 110 }); audio.noise(0.15, { vol: 0.08, cutoff: 900 }); },
     pop: () => audio.noise(0.12, { vol: 0.09, cutoff: 1100 }),
     boom: () => { audio.noise(0.5, { vol: 0.24, cutoff: 900 }); audio.tone(120, 0.42, { type: 'sine', vol: 0.2, to: 40 }); },
     clear: () => [523, 659, 784].forEach((f, i) => audio.tone(f, 0.12, { type: 'triangle', vol: 0.09, delay: i * 0.09 })),
@@ -168,7 +177,9 @@
   };
 
   // ================================================================ state
-  const newStats = () => ENC.map(e => ({ mistakes: 0, retries: 0, stunned: 0, stars: 0, firstTry: e.steps.map(() => null) }));
+  // status: new | done | skipped. Stars count wrong answers only; orb hits are kept apart in `hits`.
+  const freshStat = e => ({ status: 'new', mistakes: 0, retries: 0, hits: 0, stars: 0, firstTry: e.steps.map(() => null) });
+  const newStats = () => ENC.map(freshStat);
 
   const S = {
     screen: 'intro',            // intro | play | review | down | summary
@@ -184,6 +195,7 @@
     shake: 0, redFlash: 0, tipCd: 0, banner: null,
     bigBoom: false, boomT: 0,
     runStart: 0, shownAt: 0,
+    koT: 0, lastLoss: null,     // out-of-hearts delay; what cost the last heart ('hit' or 'wrong')
     stats: newStats(),
   };
 
@@ -208,6 +220,7 @@
   };
 
   let showZh = store.get('zh', false);
+  let level = LEVELS[store.get('level', 'easy')] ? store.get('level', 'easy') : 'easy';
 
   const enc = () => ENC[S.ei];
   const step = () => enc().steps[S.si];
@@ -239,7 +252,7 @@
     if (name !== 'play') {
       const btn = name === 'intro' && requestedSection
         ? sectionButtons.find(button => button.dataset.startSection === requestedId)
-        : ov[name].querySelector('[data-primary]');
+        : ov[name].querySelector('[data-primary]:not([hidden])');
       setTimeout(() => { if (S.screen === name && btn) btn.focus({ preventScroll: true }); }, 650);
     }
   }
@@ -287,15 +300,39 @@
     startEncounter(0);
   }
 
-  function startEncounter(index) {
-    S.ei = index; S.si = 0; S.cleared = 0;
+  /* Start a problem picked from the progress list, after a skip, or as the next one: a fresh attempt at it. */
+  function startProblem(index, note) {
+    S.stats[index] = freshStat(ENC[index]);
+    startEncounter(index, note);
+  }
+
+  /* The problem after `from` that still needs doing: unplayed ones first, then skipped ones. */
+  function nextProblem(from) {
+    const order = ENC.map((_, k) => (from + 1 + k) % ENC.length).filter(i => i !== from);
+    for (const want of ['new', 'skipped']) {
+      const i = order.find(j => S.stats[j].status === want);
+      if (i !== undefined) return i;
+    }
+    return null;
+  }
+
+  function skipProblem() {
+    if (S.stats[S.ei].status !== 'done') S.stats[S.ei].status = 'skipped';
+    const next = nextProblem(S.ei);
+    if (next === null) showSummary();
+    else startProblem(next, 'Skipped one: pick it again from Question progress');
+  }
+
+  function startEncounter(index, note) {
+    S.ei = index; S.si = 0; S.cleared = 0; S.koT = 0; S.lastLoss = null;
+    if (S.hearts <= 0) S.hearts = CFG.maxHearts;   // e.g. skipping from the out-of-hearts screen
     S.locked = null; S.armor = 1; S.stepWrong = 0; S.feedback = null; S.lastHint = null; S.hpShown = enc().steps.length;
     bullets = []; orbs = []; zaps = [];
     Object.assign(monster, { x: W / 2, y: -260, homeY: null, t: 0, hurt: 0, roar: 0.9, lunge: 0, jx: 0, jy: 0, sway: 0, swayPhase: 0, visible: true, look: enc().monster.look });
     for (const p of pods) { p.state = 'idle'; p.grow = 0; p.flash = 0; }
     setLabels();
     Object.assign(player, { x: W / 2, y: 495, stun: 0, inv: 0, kx: 0, ky: 0 });
-    S.banner = { text: enc().monster.boss ? 'BOSS' : `MONSTER ${index + 1} / ${ENC.length}`, sub: enc().monster.name.en, t: 0, dur: 1.7 };
+    S.banner = { text: enc().monster.boss ? 'BOSS' : `MONSTER ${index + 1} / ${ENC.length}`, sub: note || enc().monster.name.en, t: 0, dur: note ? 2.4 : 1.7 };
     setScreen('play'); setPhase('enter'); renderCard();
     renderHistory();
     el.card.scrollTop = 0;
@@ -303,7 +340,7 @@
     sfx.roar();
   }
 
-  function startThink() { S.thinkSeq++; setPhase('think'); }
+  function startThink() { S.thinkSeq++; S.orbTimer = CFG.orbGrace; setPhase('think'); }
 
   function nextStep() {
     S.si++; S.locked = null; S.armor = 1; S.stepWrong = 0; S.feedback = null;
@@ -321,8 +358,11 @@
   }
 
   function knockOut() {
-    $('dn-hint').innerHTML = S.lastHint ? `<b>Hint · ${S.lastHint.key}</b><br>${bi(S.lastHint.body)}` : '';
-    $('dn-hint').hidden = !S.lastHint;
+    $('dn-hint').innerHTML = S.lastLoss === 'wrong' && S.lastHint
+      ? `<b>Hint · ${S.lastHint.key}</b><br>${bi(S.lastHint.body)}`
+      : `<b>Tip</b><br>${bi(MSG.hitTip)}`;
+    $('dn-hint').hidden = false;
+    renderLevels();
     setScreen('down'); renderCard(); sfx.down();
   }
 
@@ -334,6 +374,7 @@
 
   function showReview() {
     const e = enc(), st = S.stats[S.ei];
+    st.status = 'done';
     st.stars = st.mistakes === 0 ? 3 : st.mistakes <= 2 ? 2 : 1;
     renderHistory();
     S.hearts = Math.min(CFG.maxHearts, S.hearts + 1);
@@ -343,16 +384,18 @@
     $('rv-steps').innerHTML = e.steps.map(s => `<li>${bi(s.explanation)}</li>`).join('');
     $('rv-answer').textContent = `On the real test this is choice (${e.answer}).`;
     $('rv-link').href = e.url;
-    $('btn-next').textContent = S.ei < ENC.length - 1 ? 'Next monster →' : 'See results →';
+    $('btn-next').textContent = nextProblem(S.ei) === null ? 'See results →' : 'Next monster →';
     setScreen('review'); renderCard(); sfx.win();
   }
 
+  /* Every question of the section; each row is a button that starts that question. */
   function renderHistory() {
     el.historyList.innerHTML = ENC.map((e, i) => {
-      const { stars } = S.stats[i];
-      const current = i === S.ei && !stars ? ' aria-current="step"' : '';
-      const rating = stars ? `<span class="history-stars" role="img" aria-label="${stars} of 3 stars">${starsHtml(stars)}</span>` : '';
-      return `<li data-source-id="${esc(e.id)}"${current}><span class="history-question">${e.year} · Q${e.number}</span>${rating}</li>`;
+      const { stars, status } = S.stats[i];
+      const current = i === S.ei && status !== 'done' ? ' aria-current="step"' : '';
+      const mark = stars ? `<span class="history-stars" role="img" aria-label="${stars} of 3 stars">${starsHtml(stars)}</span>`
+        : status === 'skipped' ? '<span class="history-skip">Skipped</span>' : '';
+      return `<li data-source-id="${esc(e.id)}"${current}><button type="button" class="history-pick" data-pick="${i}" title="Play this question"><span class="history-question">${e.year} · Q${e.number}</span>${mark}</button></li>`;
     }).join('');
     revealHistoryRow();
   }
@@ -365,15 +408,23 @@
     const secs = Math.round((performance.now() - S.runStart) / 1000);
     const first = S.stats.reduce((sum, s) => sum + s.firstTry.filter(v => v === true).length, 0);
     const totalSteps = ENC.reduce((sum, e) => sum + e.steps.length, 0);
-    $('sm-kicker').textContent = `Section ${activeSection.id} cleared`;
+    const done = S.stats.filter(st => st.status === 'done').length;
+    $('sm-kicker').textContent = done === ENC.length ? `Section ${activeSection.id} cleared` : `Section ${activeSection.id} · results so far`;
+    $('sm-title').textContent = done === ENC.length ? 'Mission complete' : 'Results so far';
+    $('btn-skipped').hidden = !S.stats.some(st => st.status === 'skipped');
     $('sm-stars').textContent = `${totalStars()} / ${ENC.length * 3}`;
     $('sm-first').textContent = `${first} / ${totalSteps}`;
     $('sm-time').textContent = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, '0')}`;
     $('sm-score').textContent = String(S.score);
     $('sm-list').innerHTML = ENC.map((e, i) => {
-      const s = S.stats[i];
+      const s = S.stats[i], src = `AMC 8 ${e.year} Problem ${e.number}`;
+      if (s.status !== 'done') {   // name the monster, not the method, so nothing is given away
+        const tag = s.status === 'skipped' ? '<span class="tag tag--skip">Skipped</span>' : '<span class="tag">Not played</span>';
+        return `<li>${tag}<div><b>${esc(e.monster.name.en)}</b><small>${src}</small></div></li>`;
+      }
       const missed = s.firstTry.map((ok, j) => (ok === false ? `Step ${j + 1}` : '')).filter(Boolean);
-      const note = missed.length ? `<small class="miss">AMC 8 ${e.year} Problem ${e.number} · review ${missed.join(', ')}</small>` : `<small>AMC 8 ${e.year} Problem ${e.number} · every step right first time</small>`;
+      const hits = s.hits ? ` · hit by ${s.hits} orb${s.hits > 1 ? 's' : ''}` : '';
+      const note = missed.length ? `<small class="miss">${src} · review ${missed.join(', ')}${hits}</small>` : `<small>${src} · every step right first time${hits}</small>`;
       return `<li><span class="stars stars--sm">${starsHtml(s.stars)}</span><div><b>${bi(e.method.title)}</b>${note}</div></li>`;
     }).join('');
     $('sm-link').href = activeSection.url;
@@ -411,7 +462,7 @@
     addFloat(player.x, player.y - 52 * actor(), '−1 ♥', '#fca5a5', 22);
     burst(player.x, player.y - 6, '#f87171', 16, 240);
     S.feedback = { kind: 'wrong', key: p.key, title: `Hint · ${p.key} is not it`, body: step().options[p.key].hint };
-    S.lastHint = S.feedback;
+    S.lastHint = S.feedback; S.lastLoss = 'wrong';
     sfx.wrong();
     setPhase('counter'); renderCard();
     revealInScrollArea(el.card, el.feedback);
@@ -428,7 +479,7 @@
     S.score += pts;
     addFloat(p.x, p.y - p.r - 22, `WEAK POINT!  +${pts}`, '#fde047', 20);
     S.feedback = { kind: 'right', key: p.key, title: `Correct · ${p.key}`, body: MSG.keepFiring };
-    S.orbTimer = CFG.orbGrace; S.orbTurn = 0;
+    S.orbTimer = 0.5; S.orbTurn = 0;
     sfx.lock();
     setPhase('break'); renderCard();
     revealInScrollArea(el.card, view.stacked ? el.options.querySelector('.is-locked') : el.feedback);
@@ -455,12 +506,15 @@
     setPhase('stepClear'); renderCard();
   }
 
-  function stunPlayer(o) {
-    player.stun = CFG.stunSeconds; player.inv = CFG.stunSeconds + 0.6;
-    player.kx = o.vx * 1.3; player.ky = o.vy * 1.3;
-    S.shake = Math.max(S.shake, 8); S.stats[S.ei].stunned++;
-    addFloat(player.x, player.y - 52 * actor(), 'STUNNED!', '#c4b5fd', 18);
-    burst(o.x, o.y, o.col, 10, 200); sfx.stun();
+  /* An orb hit costs a heart, knocks the player back, and leaves a short blinking moment of safety. */
+  function hitPlayer(o) {
+    S.hearts = Math.max(0, S.hearts - 1); S.stats[S.ei].hits++; S.lastLoss = 'hit';
+    player.stun = 0.2; player.inv = CFG.hitInvincible;
+    player.kx = o.vx * 1.4; player.ky = o.vy * 1.4;
+    S.shake = Math.max(S.shake, 12); S.redFlash = Math.max(S.redFlash, 0.8);
+    addFloat(player.x, player.y - 52 * actor(), '−1 ♥', '#fca5a5', 24);
+    burst(o.x, o.y, o.col, 12, 220); burst(player.x, player.y - 6, '#f87171', 12, 220);
+    sfx.hurt();
   }
 
   // ================================================================ update
@@ -621,25 +675,41 @@
     bullets = bullets.filter(b => !b.dead);
   }
 
+  const orbRamp = () => 1 + CFG.orbRamp * S.ei / Math.max(1, ENC.length - 1);   // later monsters fire a little harder
+
+  function fireOrb(x, y, col) {
+    const v = LEVELS[level].speed * orbRamp();
+    const d = Math.hypot(player.x - x, player.y - y) || 1;
+    orbs.push({ x, y, vx: (player.x - x) / d * v, vy: (player.y - y) / d * v, r: 11, col, t: 0, dead: false });
+    sfx.orb();
+  }
+
+  /* The monster attacks from the start: from its mouth while the student thinks,
+     and from its other parts while the right part is being broken. */
   function updateOrbs(dt) {
-    if (S.phase === 'break') {
+    if ((S.phase === 'think' || S.phase === 'break') && S.hearts > 0) {
       S.orbTimer -= dt;
+      if (S.phase === 'think' && S.orbTimer < 0.45) monster.roar = Math.max(monster.roar, 0.75);   // wind-up: the mouth opens before a shot
       if (S.orbTimer <= 0) {
-        const difficulty = CFG.orbDifficultyMax * S.ei / Math.max(1, ENC.length - 1);
-        const shooters = pods.filter(p => p.key !== S.locked && p.state !== 'gone' && p.grow > 0.6);
-        if (shooters.length) {
-          const p = shooters[S.orbTurn++ % shooters.length];
-          const d = Math.hypot(player.x - p.x, player.y - p.y) || 1, v = CFG.orbSpeed(difficulty);
-          orbs.push({ x: p.x, y: p.y, vx: (player.x - p.x) / d * v, vy: (player.y - p.y) / d * v, r: 11, col: p.state === 'sealed' ? '#f87171' : KEY_COLOR[p.key], t: 0, dead: false });
-          p.flash = 0.8; sfx.orb();
+        const L = LEVELS[level];
+        if (S.phase === 'break') {
+          const shooters = pods.filter(p => p.key !== S.locked && p.state !== 'gone' && p.grow > 0.6);
+          if (shooters.length) {
+            const p = shooters[S.orbTurn++ % shooters.length];
+            fireOrb(p.x, p.y, p.state === 'sealed' ? '#f87171' : KEY_COLOR[p.key]); p.flash = 0.8;
+          }
+          S.orbTimer = L.brk / orbRamp();
+        } else {
+          const m = monster, s = m.look.size * actor();
+          fireOrb(m.x + m.jx, m.y + m.jy + 34 * s, m.look.body); m.roar = Math.max(m.roar, 0.55);
+          S.orbTimer = L.think / orbRamp();
         }
-        S.orbTimer = CFG.orbInterval(difficulty);
       }
     }
     for (const o of orbs) {
       o.x += o.vx * dt; o.y += o.vy * dt; o.t += dt;
-      if (player.inv <= 0 && Math.hypot(o.x - player.x, o.y - (player.y - 4 * actor())) < o.r + player.r - 2) { stunPlayer(o); o.dead = true; }
-      if (o.x < -30 || o.x > W + 30 || o.y < -30 || o.y > H + 30) o.dead = true;
+      if (!debug.noOrbHits && player.inv <= 0 && S.hearts > 0 && Math.hypot(o.x - player.x, o.y - (player.y - 4 * actor())) < o.r + player.r - 2) { hitPlayer(o); o.dead = true; }
+      if (o.x < -30 || o.x > W + 30 || o.y < -view.top - 30 || o.y > H + 30) o.dead = true;
     }
     orbs = orbs.filter(o => !o.dead);
   }
@@ -666,10 +736,14 @@
 
     S.phaseT += dt;
     updatePlayer(dt); updateMonster(dt); updateBullets(dt); updateOrbs(dt);
+    if (S.hearts <= 0) {   // out of hearts: a short beat to see the last hit, then the retry screen
+      S.koT += dt;
+      if (S.koT >= 0.7) { knockOut(); return; }
+    }
 
     switch (S.phase) {
       case 'enter': if (S.phaseT >= CFG.time.enter) startThink(); break;
-      case 'counter': if (S.phaseT >= CFG.time.counter) { if (S.hearts <= 0) knockOut(); else startThink(); } break;
+      case 'counter': if (S.phaseT >= CFG.time.counter && S.hearts > 0) startThink(); break;
       case 'stepClear': if (S.phaseT >= CFG.time.stepClear) { if (S.cleared >= enc().steps.length) startDying(); else nextStep(); } break;
       case 'rearm': if (S.phaseT >= CFG.time.rearm) startThink(); break;
       case 'dying': {
@@ -1032,6 +1106,9 @@
       ctx.lineWidth = 2; ctx.strokeStyle = on ? '#fecdd3' : 'rgba(148,163,184,0.5)'; ctx.stroke();
     }
     if (S.screen === 'intro') return;
+    const L = LEVELS[level];
+    ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.font = `800 11px ${FONT}`; ctx.fillStyle = L.col;
+    ctx.fillText(L.label.en.toUpperCase(), 19, 52);
 
     const stepCount = enc().steps.length;
     const bw = 280, bx = (W - bw) / 2, by = 31, bh = 12, gap = 5, seg = (bw - gap * (stepCount - 1)) / stepCount;
@@ -1193,6 +1270,7 @@
 
     const e = enc();
     el.source.textContent = `AMC 8 · ${e.year} · Problem ${e.number}`;
+    $('btn-skip').hidden = S.screen !== 'play' || S.cleared >= e.steps.length;
     el.type.hidden = S.cleared < 1;
     el.type.innerHTML = `Type · ${esc(e.method.title.en)}<span class="zh zh-inline" lang="zh"> ${esc(e.method.title.zh)}</span>`;
     el.stem.innerHTML = bi(e.stem);
@@ -1364,7 +1442,47 @@
   $('btn-retry').addEventListener('click', () => { if (ready()) retryEncounter(); });
   $('btn-next').addEventListener('click', () => {
     if (!ready()) return;
-    if (S.ei < ENC.length - 1) startEncounter(S.ei + 1); else showSummary();
+    const next = nextProblem(S.ei);
+    if (next === null) showSummary(); else startProblem(next);
+  });
+
+  // ---- difficulty, skipping and choosing questions
+  function renderLevels() {
+    for (const box of document.querySelectorAll('[data-levels]')) {
+      box.innerHTML = Object.entries(LEVELS).map(([key, L]) => `<button type="button" class="level${key === level ? ' is-on' : ''}" role="radio" aria-checked="${key === level}" data-level="${key}"><b>${esc(L.label.en)}<span class="zh zh-inline" lang="zh"> ${esc(L.label.zh)}</span></b><small>${bi(L.note)}</small></button>`).join('');
+    }
+  }
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('[data-level]');
+    if (!btn) return;
+    level = btn.dataset.level; store.set('level', level); renderLevels();
+  });
+  $('btn-skip').addEventListener('click', e => {
+    e.currentTarget.blur();
+    if (ready() && S.screen === 'play' && S.cleared < enc().steps.length) skipProblem();
+  });
+  $('btn-down-skip').addEventListener('click', () => { if (ready()) skipProblem(); });
+  $('btn-skipped').addEventListener('click', () => {
+    if (!ready()) return;
+    const i = S.stats.findIndex(st => st.status === 'skipped');
+    if (i >= 0) startProblem(i);
+  });
+  // a row of the progress list starts that question (in the side panel or the History dialog)
+  el.historyList.addEventListener('click', e => {
+    const btn = e.target.closest('[data-pick]');
+    if (!btn || !ready() || S.screen !== 'play') return;
+    const i = Number(btn.dataset.pick);
+    if (el.historyDialog.open) el.historyDialog.close();
+    if (i !== S.ei || S.stats[i].status === 'done') startProblem(i);
+  });
+  $('btn-random').addEventListener('click', e => {
+    e.currentTarget.blur();
+    if (!ready() || S.screen !== 'play') return;
+    const open = ENC.map((_, i) => i).filter(i => i !== S.ei && S.stats[i].status !== 'done');
+    const pool = open.length ? open : ENC.map((_, i) => i).filter(i => i !== S.ei);
+    if (!pool.length) return;
+    if (el.historyDialog.open) el.historyDialog.close();
+    startProblem(pool[Math.floor(Math.random() * pool.length)]);
   });
   el.figure.addEventListener('click', () => {
     const figure = enc().figure;
@@ -1450,14 +1568,15 @@
     update(dt); render();
   }
 
-  applyLanguage(); applySound();
+  applyLanguage(); applySound(); renderLevels();
   setScreen('intro'); renderCard(); resize();
   requestAnimationFrame(frame);
 
   // handle for automated checks: step the simulation without waiting for real time
   window.__shooter = {
-    S, CFG, player, monster, pods, input, view,
+    S, CFG, LEVELS, player, monster, pods, input, view, debug,
     get ENC() { return ENC; },
+    get level() { return level; },
     get W() { return W; },
     advance(seconds) { for (let t = 0; t < seconds; t += 1 / 60) update(1 / 60); render(); },
   };

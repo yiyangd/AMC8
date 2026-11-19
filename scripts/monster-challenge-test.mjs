@@ -52,6 +52,8 @@ const gridQuestion = '2026Q2';
 
 async function withPage(options, test) {
   const context = await browser.newContext(options);
+  // Monsters fire from the start and hits cost hearts; these checks stand still, so switch orb hits off.
+  await context.addInitScript(() => { window.__shooterNoOrbHits = true; });
   const page = await context.newPage();
   page.on('pageerror', error => issues.push(error.message));
   page.on('response', response => {

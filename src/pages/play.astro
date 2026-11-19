@@ -70,9 +70,15 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .history-slot .run-history { padding: .65em .8em; border: 1px solid var(--line); border-radius: 12px; background: rgba(9, 15, 36, .92); font-size: clamp(12px, calc(12px * var(--u)), 16px); }
   .history-slot .history-list { max-height: calc(190px * var(--u)); }
   .run-history h2 { margin: 0 0 .4em; font-size: 1em; line-height: 1.35; }
+  .run-history-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .5em; }
+  .history-random { flex: none; padding: .1em .55em; border: 1px solid var(--line); border-radius: 999px; background: rgba(255, 255, 255, .04); color: var(--muted); font-size: .85em; cursor: pointer; }
+  .history-random:hover, .history-random:focus-visible { color: var(--ink); border-color: var(--muted); outline: none; }
   .history-list { margin: 0; padding: 0 .15em; list-style: none; overflow: auto; overscroll-behavior: contain; scrollbar-width: thin; font-variant-numeric: tabular-nums; }
   .history-list:focus-visible { outline: 2px solid var(--a); outline-offset: 2px; border-radius: 4px; }
-  .history-list li { display: flex; align-items: center; justify-content: space-between; gap: .6em; padding: .35em 0; white-space: nowrap; }
+  .history-list li { padding: 0; white-space: nowrap; }
+  .history-pick { display: flex; align-items: center; justify-content: space-between; gap: .6em; width: 100%; padding: .35em .25em; border: 0; border-radius: 6px; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+  .history-pick:hover, .history-pick:focus-visible { background: rgba(255, 255, 255, .07); outline: none; }
+  .history-skip { color: var(--b); font-size: .85em; font-weight: 700; }
   .history-list li + li { border-top: 1px solid var(--line); }
   .history-list li[aria-current="step"] .history-question { color: var(--a); font-weight: 700; }
   .history-stars { color: var(--gold); letter-spacing: .08em; }
@@ -161,6 +167,28 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   .btn { display: inline-flex; align-items: center; gap: 8px; padding: 12px 22px; border: 0; border-radius: 12px; background: var(--gold); color: #0b1020; font-size: 16px; font-weight: 800; cursor: pointer; text-decoration: none; }
   .btn:hover { filter: brightness(1.08); }
   .link { font-size: 14px; }
+  .linkbtn { padding: 0; border: 0; background: none; color: var(--a); font-size: 14px; text-decoration: underline; cursor: pointer; }
+
+  /* "Skip for now" in the question card's top row */
+  .qskip { padding: .2em .8em; border: 1px solid rgba(148, 163, 184, .45); border-radius: 999px; background: rgba(255, 255, 255, .04); color: var(--muted); font: 700 1em var(--font); letter-spacing: .06em; text-transform: uppercase; cursor: pointer; }
+  .qskip:hover, .qskip:focus-visible { color: var(--ink); border-color: var(--ink); outline: none; }
+  #app:not([data-layout="overlay"]) .qskip { padding: .5em 1em; font-size: 1.15em; }   /* finger-sized on phones */
+
+  /* difficulty picker (start screen and out-of-hearts screen) */
+  .levels-label { margin: 18px 0 8px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+  .levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .level { display: grid; gap: 3px; align-content: start; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 12px; background: rgba(255, 255, 255, .03); text-align: left; cursor: pointer; }
+  .level b { font-size: 15px; }
+  .level small { color: var(--muted); font-size: 12px; line-height: 1.4; }
+  .level small .zh { font-size: 1em; }
+  .level:hover { border-color: var(--muted); }
+  .level.is-on { border-color: var(--gold); background: rgba(253, 224, 71, .08); }
+  .level.is-on b::before { content: "● "; color: var(--gold); }
+  @media (max-width: 640px) { .levels { grid-template-columns: minmax(0, 1fr); } }
+
+  /* results rows for questions not finished */
+  .tag { padding: 2px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .tag--skip { border-color: rgba(251, 191, 36, .55); color: var(--b); }
   .section-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 20px; }
   .section-choice { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: #0b1430; cursor: pointer; }
   .section-choice:hover, .section-choice[aria-current="true"] { border-color: var(--a); }
@@ -227,7 +255,10 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
         </div>
         <div class="history-slot" id="history-slot">
           <aside class="run-history" id="run-history" aria-labelledby="run-history-title">
-            <h2 id="run-history-title">Question progress<span class="zh" lang="zh">题目进度</span></h2>
+            <div class="run-history-head">
+              <h2 id="run-history-title">Question progress<span class="zh" lang="zh">题目进度</span></h2>
+              <button type="button" class="history-random" id="btn-random" title="Play a random question">🎲</button>
+            </div>
             <ol class="history-list" id="run-history-list" tabindex="0"></ol>
           </aside>
         </div>
@@ -243,7 +274,7 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       <section class="qcard" id="qcard" hidden>
         <div class="q-reference" id="q-reference">
           <div class="q-copy">
-            <div class="qc-meta"><span id="q-source"></span><span class="q-type" id="q-type" hidden></span></div>
+            <div class="qc-meta"><span id="q-source"></span><span class="q-type" id="q-type" hidden></span><button type="button" class="qskip" id="btn-skip">Skip for now ›</button></div>
             <div class="q-stem" id="q-stem"></div>
             <ol class="q-solved" id="q-solved" hidden></ol>
           </div>
@@ -283,10 +314,13 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
         <div class="card">
           <p class="kicker" style="color: var(--bad)">Out of hearts</p>
           <h2>The monster won this round<span class="zh" lang="zh">这一轮怪兽赢了</span></h2>
-          <p class="lead">Every wrong part costs a heart. Read the hint, think it through, then fire.<span class="zh" lang="zh">每打错一个部位就会掉一颗心。先读提示，想清楚再开火。</span></p>
+          <p class="lead">Wrong parts and orb hits both cost a heart. Keep moving while you think, then fire.<span class="zh" lang="zh">打错部位和被能量球打中都会掉一颗心。一边想一边移动，再开火。</span></p>
           <div class="hintbox" id="dn-hint"></div>
+          <p class="levels-label">Difficulty · 难度</p>
+          <div class="levels" data-levels role="radiogroup" aria-label="Difficulty"></div>
           <div class="actions">
             <button type="button" class="btn" id="btn-retry" data-primary>Try this monster again</button>
+            <button type="button" class="linkbtn" id="btn-down-skip">Skip for now</button>
             <a class="link" href={url('play/')}>Choose section</a>
           </div>
         </div>
@@ -300,6 +334,8 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       <p class="kicker">AMC 8</p>
       <h1>Monster Shooter</h1>
       <p class="lead">Solve one AMC 8 problem per monster, one step at a time.<span class="zh" lang="zh">每只怪兽对应一道 AMC 8 真题，一步步解题过关。</span></p>
+      <p class="levels-label">Difficulty · 难度</p>
+      <div class="levels" data-levels role="radiogroup" aria-label="Difficulty"></div>
       <div class="section-choices" role="group" aria-label="Choose a section">
         {shooterData.sections.map((section, index) => (
           <button class="section-choice" type="button" data-start-section={section.id} data-primary={index === 0 ? '' : undefined}>
@@ -312,7 +348,7 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       <ol class="how">
         <li><div><b>Read the step</b><span class="en">The card above the monster shows the problem and one small question.</span><span class="zh" lang="zh">怪兽上方的卡片会显示题目和一个小问题。</span></div></li>
         <li><div><b>Shoot the right part</b><span class="en">Each part carries one answer. Hold fire on the right part to break it.</span><span class="zh" lang="zh">每个部位对应一个选项。按住正确选项持续开火，击破部位。</span></div></li>
-        <li><div><b>Think before you fire</b><span class="en">A wrong part strikes back: you lose a heart and get a hint. While you break a part, dodge the orbs.</span><span class="zh" lang="zh">打错部位会被反击：掉一颗心，并得到一条提示。击破部位时记得躲开能量球。</span></div></li>
+        <li><div><b>Dodge while you think</b><span class="en">The monster fires orbs from the start. Every hit costs a heart, and so does a wrong part (you get a hint). Stuck? Skip the question, or pick another one from Question progress.</span><span class="zh" lang="zh">怪兽一开始就会发射能量球，被打中掉一颗心；打错部位也掉一颗心，并给出提示。不会做可以先跳过，或在“题目进度”里换一道题。</span></div></li>
       </ol>
       <p class="keys">
         Move <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys · Aim with the mouse · Hold click to fire<br>
@@ -329,7 +365,7 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
   <section class="overlay overlay--full" id="ov-summary" hidden>
     <div class="card">
       <p class="kicker" id="sm-kicker"></p>
-      <h1>Mission complete</h1>
+      <h1 id="sm-title">Mission complete</h1>
       <div class="tiles">
         <div class="tile"><strong id="sm-stars"></strong><span>Stars</span></div>
         <div class="tile"><strong id="sm-first"></strong><span>Steps right first time</span></div>
@@ -338,6 +374,7 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       </div>
       <ul class="results" id="sm-list"></ul>
       <div class="actions">
+        <button type="button" class="btn" id="btn-skipped" data-primary hidden>Try the skipped questions →</button>
         <button type="button" class="btn" id="btn-again" data-primary>Play again</button>
         <button type="button" class="chip" id="btn-choose">Choose section</button>
         <a class="link" id="sm-link" target="_blank" rel="noopener">Section workbook ↗</a>
@@ -355,6 +392,6 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 </div>
 
 <script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
-<script is:inline src={url('game/monster-shooter-v9.js?v=5')}></script>
+<script is:inline src={url('game/monster-shooter-v9.js?v=7')}></script>
 </body>
 </html>
