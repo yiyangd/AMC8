@@ -27,7 +27,6 @@ const levelsBySection = {
 };
 const sectionPath = id => '/AMC8/sections/' + sourceSections.get(id).slug + '/';
 const startButton = (page, id) => page.locator('[data-start-section="' + id + '"]');
-const keyForPart = { A: '1', B: '2', C: '3' };
 const normalizeAnswer = text => text.trim()
   .replace(/\[\[([^\]]+)\]\]/g, '$1')
   .replace(/\s+(?:students|points)$/i, '')
@@ -107,20 +106,31 @@ async function advanceTo(page, state) {
   }, state);
 }
 
+// Aim the way a student does: move the crosshair onto the part, press, and keep it there while the part sways.
 async function shoot(page, part, target) {
-  return page.evaluate(({ part, key, target }) => {
+  return page.evaluate(({ part, target }) => {
     const game = window.__shooter;
     const { S } = game;
-    const send = type => window.dispatchEvent(new KeyboardEvent(type, { key }));
-    send('keydown');
+    const canvas = document.querySelector('#arena');
+    const point = buttons => {
+      const pod = game.pods.find(item => item.key === part), box = canvas.getBoundingClientRect();
+      return {
+        pointerType: 'mouse', pointerId: 1, isPrimary: true, button: 0, buttons, bubbles: true, cancelable: true,
+        clientX: box.left + pod.x / game.W * box.width,
+        clientY: box.top + (pod.y + game.view.top) / (600 + game.view.top) * box.height,
+      };
+    };
+    const track = () => { canvas.dispatchEvent(new PointerEvent('pointermove', point(1))); game.advance(0.05); };
+    canvas.dispatchEvent(new PointerEvent('pointermove', point(0)));
+    canvas.dispatchEvent(new PointerEvent('pointerdown', point(1)));
     try {
       if (target === 'stepClear') {
-        for (let i = 0; i < 120 && S.phase !== 'break'; i++) game.advance(0.05);
+        for (let i = 0; i < 120 && S.phase !== 'break'; i++) track();
         if (S.phase !== 'break' || S.locked !== part || S.armor <= 0) {
           throw new Error('Correct part ' + part + ' did not lock before breaking');
         }
       }
-      for (let i = 0; i < 240 && S.phase !== target; i++) game.advance(0.05);
+      for (let i = 0; i < 240 && S.phase !== target; i++) track();
       if (S.phase !== target) throw new Error('Shot at ' + part + ' did not enter ' + target);
       return {
         cleared: S.cleared,
@@ -130,9 +140,9 @@ async function shoot(page, part, target) {
         firstTry: S.stats[S.ei].firstTry[S.si],
       };
     } finally {
-      send('keyup');
+      window.dispatchEvent(new PointerEvent('pointerup', point(0)));
     }
-  }, { part, key: keyForPart[part], target });
+  }, { part, target });
 }
 
 async function verifyInitialPrompt(page, sourceId) {
@@ -172,12 +182,12 @@ async function verifyReference(page, sourceId) {
     await expect(dialog).toBeVisible();
     await expect(dialog.locator('#figure-caption')).toContainText(/\S/);
     await expect.poll(() => dialog.locator('img').evaluate(image => image.naturalWidth)).toBeGreaterThan(0);
-    await page.keyboard.down('1');
+    await page.keyboard.down('d');   // game keys must not act behind the figure dialog
     await page.evaluate(() => window.__shooter.advance(2));
-    await page.keyboard.up('1');
+    await page.keyboard.up('d');
     await page.keyboard.press('Escape');
     await expect(dialog).toBeHidden();
-    assert.deepEqual(await page.evaluate(() => [__shooter.S.phase, __shooter.S.hearts]), ['think', 5]);
+    assert.deepEqual(await page.evaluate(() => [__shooter.S.phase, __shooter.S.hearts, __shooter.player.camX]), ['think', 5, 0]);
   } else {
     await expect(figure).toBeHidden();
   }
@@ -422,32 +432,37 @@ async function inspectTouch(page) {
   await touch('touchEnd');
   await expect.poll(async () => ((await cardState())[0] - before) * -direction).toBeGreaterThan(5);
   await page.evaluate(() => window.__shooter.advance(0.75));
-  assert.deepEqual(await page.evaluate(() => [__shooter.S.phase, __shooter.S.hearts, __shooter.input.rowKey]), ['think', 5, null]);
+  assert.deepEqual(await page.evaluate(() => [__shooter.S.phase, __shooter.S.hearts]), ['think', 5]);
 
+  // Aim on touch: hold a finger on the right part in the arena and follow it as it sways, while the other thumb strafes.
   const correct = levelsBySection['1.1'][0][1][0];
-  const option = await partPoint(correct);
+  const partOnCanvas = letter => page.evaluate(key => {
+    const game = window.__shooter, pod = game.pods.find(item => item.key === key);
+    const box = document.querySelector('#arena').getBoundingClientRect();
+    return { x: box.left + pod.x / game.W * box.width, y: box.top + (pod.y + game.view.top) / (600 + game.view.top) * box.height, id: 3 };
+  }, letter);
   const joystick = await page.evaluate(() => {
-    const game = window.__shooter;
-    const canvas = document.querySelector('#arena').getBoundingClientRect();
-    return {
-      x: canvas.left + game.player.x / game.W * canvas.width,
-      y: canvas.top + (game.player.y + game.view.top) * game.view.scale,
-      id: 2,
-    };
+    const game = window.__shooter, box = document.querySelector('#arena').getBoundingClientRect();
+    return { x: box.left + box.width * 0.3, y: box.top + (game.player.y + game.view.top) / (600 + game.view.top) * box.height, id: 2 };
   });
-  const playerStart = await page.evaluate(() => window.__shooter.player.x);
+  const camStart = await page.evaluate(() => window.__shooter.player.camX);
+  const thumb = { ...joystick, x: joystick.x + 30 };
+  let finger = await partOnCanvas(correct);
   await touch('touchStart', joystick);
-  await touch('touchStart', joystick, option);
-  await expect.poll(() => page.evaluate(() => window.__shooter.input.rowKey)).toBe(correct);
-  await touch('touchMove', { ...joystick, x: joystick.x + 30 }, option);
-  await advanceTo(page, 'stepClear');
-  assert(await page.evaluate(start => window.__shooter.player.x > start, playerStart), 'Touch joystick should move the player');
+  await touch('touchStart', joystick, finger);
+  for (let i = 0; i < 200 && await page.evaluate(() => window.__shooter.S.phase !== 'stepClear'); i++) {
+    finger = await partOnCanvas(correct);
+    await touch('touchMove', thumb, finger);
+    await page.evaluate(() => window.__shooter.advance(0.05));
+  }
+  assert.equal(await page.evaluate(() => window.__shooter.S.phase), 'stepClear', 'Holding a finger on the right part should break it');
+  assert(await page.evaluate(start => window.__shooter.player.camX > start, camStart), 'Touch joystick should strafe the view');
   await advanceTo(page, 'think');
   await page.evaluate(() => window.__shooter.advance(0.75));
   assert.deepEqual(await page.evaluate(() => [__shooter.S.si, __shooter.S.phase, __shooter.S.hearts]), [1, 'think', 5]);
   await touch('touchEnd');
-  assert.deepEqual(await page.evaluate(() => [__shooter.input.rowKey, __shooter.input.stick]), [null, null]);
-  console.log('PASS touch scrolling from options, hold to break, simultaneous joystick and fresh trigger on next step');
+  assert.deepEqual(await page.evaluate(() => [__shooter.input.touchAim, __shooter.input.stick]), [null, null]);
+  console.log('PASS touch: answer rows only scroll, a held finger aims and breaks while the joystick strafes, a fresh press is needed on the next step');
 
   await completeEncounter(page, answers.slice(1));
   await clickWhenReady(page, page.locator('#btn-next'));

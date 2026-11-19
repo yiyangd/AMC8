@@ -26,10 +26,12 @@
     maxHearts: 5,
     breakSeconds: 2.4,          // sustained fire needed to break the correct part
     fireRate: 9,                // shots per second
-    rowHoldMs: 160,             // stationary touch before an answer row starts firing
-    rowMoveLimit: 10,           // CSS pixels travelled before a touch becomes a gesture
-    bulletSpeed: 1150,
-    playerSpeed: 285,
+    // First person: the camera is the student's eyes. camX strafes left and right, camZ steps closer
+    // (the monster looks bigger, but its orbs arrive sooner). World units equal screen units at the normal distance.
+    cam: { maxX: 240, maxZ: 170, depth: 620, speedX: 340, speedZ: 230 },
+    hitRadius: 58,              // an orb hits when it arrives within this many world units of where the student stands
+    escalateEvery: 10,          // every 10 s on the same question the monster fires 0.1 s more often
+    escalateBy: 0.1,
     hitInvincible: 1.3,         // after an orb hit the player blinks and cannot be hit again for this long
     orbGrace: 1.2,              // quiet time at the start of each step, and after a hint, before the first orb
     orbRamp: 0.2,               // the last monster of a section fires up to 20% faster and more often than the first
@@ -53,30 +55,32 @@
     [[56, 59], [33, 56], [24, 36]],
   ];
   const MOVE_KEY = { w: [0, -1], arrowup: [0, -1], s: [0, 1], arrowdown: [0, 1], a: [-1, 0], arrowleft: [-1, 0], d: [1, 0], arrowright: [1, 0] };
-  const FIRE_KEY = { 1: 'A', 2: 'B', 3: 'C', j: 'A', k: 'B', l: 'C' };
 
   const T = (en, zh) => ({ en, zh });
   const MSG = {
-    keepFiring: T('Keep firing to break this part, and dodge the orbs.', '持续射击打掉这个部位，注意躲开能量球。'),
+    keepFiring: T('Keep the crosshair on this part and hold fire. Strafe to dodge the orbs.', '准星一直对准这个部位并按住开火，左右移动躲开能量球。'),
+    faster: T('FASTER!', '更快了！'),
     status: {
       enter: T('A monster is coming…', '怪兽来了……'),
-      first: T('Read the question and keep moving to dodge the orbs. Then shoot part A, B or C.', '读题时左右移动躲开能量球，再射击 A、B 或 C 部位。'),
-      think: T('Keep moving to dodge the orbs. Then shoot the right part.', '移动躲开能量球，再射击正确的部位。'),
+      first: T('Read the question. Strafe with A / D to dodge, then aim at part A, B or C and hold fire.', '读题时用 A / D 左右移动躲避，再瞄准 A、B 或 C 部位按住开火。'),
+      think: T('Strafe to dodge. Aim at the right part and hold fire.', '左右移动躲避，瞄准正确的部位按住开火。'),
       counter: T('Wrong part. It strikes back! Read the hint above.', '打错部位，它反击了！看看上面的提示。'),
-      break: T('Weak point! Hold fire to break it. Dodge the orbs.', '命中弱点！持续开火打掉它，躲开能量球。'),
+      break: T('Weak point! Keep the crosshair on it and hold fire.', '命中弱点！准星对准它，按住开火。'),
       stepClear: T('Part destroyed!', '部位击破！'),
       rearm: T('New parts are growing. Read the next step above.', '新的部位长出来了。读上面的下一步。'),
       dying: T('Monster defeated!', '怪兽被打败了！'),
     },
-    hitTip: T('Orb hits cost hearts too. Keep moving left and right while you think. If the orbs are too fast, choose Easy below.', '被能量球打中也会掉心。想题的时候要左右移动；如果太快，可以在下面选“简单”。'),
+    hitTip: T('Orb hits cost hearts too. Strafe left and right (A / D) while you think. If the orbs are too fast, choose Easy below.', '被能量球打中也会掉心。想题的时候用 A / D 左右移动；如果太快，可以在下面选“简单”。'),
   };
 
   /* Difficulty: seconds between orbs and orb speed. `think` applies while the student works out a step,
      `brk` while they break the right part. Chosen on the start screen or the out-of-hearts screen, and remembered. */
   const LEVELS = {
-    easy: { label: T('Easy', '简单'), note: T('Slow orbs, easy to dodge', '能量球慢，容易躲'), think: 4.5, brk: 2.0, speed: 135, col: '#34d399' },
-    medium: { label: T('Medium', '中等'), note: T('Faster orbs, more often', '能量球更快、更密'), think: 2.6, brk: 1.3, speed: 190, col: '#fbbf24' },
-    hard: { label: T('Hard', '困难'), note: T('Fast orbs: keep moving', '又快又密，要一直移动'), think: 1.5, brk: 0.85, speed: 245, col: '#f87171' },
+    // think / brk: seconds between orbs at the start of a question; floor: the fastest it gets as it speeds up;
+    // travel: seconds an orb takes to reach you; sway: how far the part being broken swings (harder to keep aim)
+    easy: { label: T('Easy', '简单'), note: T('Slower orbs, steady targets', '能量球较慢，目标晃动小'), think: 2.0, brk: 1.3, floor: 0.9, travel: 1.25, sway: 50, col: '#34d399' },
+    medium: { label: T('Medium', '中等'), note: T('Fast orbs, targets sway', '能量球快，目标会晃'), think: 1.3, brk: 0.9, floor: 0.6, travel: 1.0, sway: 90, col: '#fbbf24' },
+    hard: { label: T('Hard', '困难'), note: T('Very fast orbs: keep strafing', '又快又密，要一直移动'), think: 0.85, brk: 0.6, floor: 0.4, travel: 0.8, sway: 130, col: '#f87171' },
   };
 
   // ================================================================ helpers
@@ -86,10 +90,11 @@
   const rand = (a, b) => a + Math.random() * (b - a);
   const pick = list => list[Math.floor(Math.random() * list.length)];
   const easeOut = t => 1 - Math.pow(1 - t, 3);
-  const zoneRight = () => W - CFG.zone.left;
   const spread = () => clamp(W * 0.21, 200, 300);   // distance between neighbouring parts: wider scenes spread them out
   const plateWidth = () => spread() - 44;           // widest line of answer text under a part
   const actor = () => (view.stacked ? 1 : CFG.actorScale);
+  const zoom = () => CFG.cam.depth / (CFG.cam.depth - player.camZ);   // stepping closer makes the monster bigger
+  const clock = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 
   const store = {
     get(key, fallback) {
@@ -178,7 +183,7 @@
 
   // ================================================================ state
   // status: new | done | skipped. Stars count wrong answers only; orb hits are kept apart in `hits`.
-  const freshStat = e => ({ status: 'new', mistakes: 0, retries: 0, hits: 0, stars: 0, firstTry: e.steps.map(() => null) });
+  const freshStat = e => ({ status: 'new', mistakes: 0, retries: 0, hits: 0, time: 0, stars: 0, firstTry: e.steps.map(() => null) });
   const newStats = () => ENC.map(freshStat);
 
   const S = {
@@ -196,11 +201,13 @@
     bigBoom: false, boomT: 0,
     runStart: 0, shownAt: 0,
     koT: 0, lastLoss: null,     // out-of-hearts delay; what cost the last heart ('hit' or 'wrong')
+    attemptT: 0, faster: 0,     // seconds into this attempt at the question; how many times the monster has sped up
     stats: newStats(),
   };
 
-  const player = { x: W / 2, y: 495, r: 17, aim: -Math.PI / 2, fireCd: 0, stun: 0, inv: 0, recoil: 0, flash: 0, walkT: 0, moving: false, kx: 0, ky: 0 };
-  const monster = { x: W / 2, y: CFG.monsterY, homeY: null, t: 0, hurt: 0, roar: 0, lunge: 0, jx: 0, jy: 0, sway: 0, swayPhase: 0, visible: true, look: ENC[0].monster.look };
+  // x, y: where hits and floating texts land on screen (bottom middle); aimX, aimY: where the blaster points
+  const player = { x: W / 2, y: 530, r: 17, camX: 0, camZ: 0, aimX: W / 2, aimY: 200, fireCd: 0, stun: 0, inv: 0, recoil: 0, flash: 0, bob: 0, moving: false, kx: 0 };
+  const monster = { x: W / 2, y: CFG.monsterY, homeY: null, swayX: 0, t: 0, hurt: 0, roar: 0, lunge: 0, jx: 0, jy: 0, sway: 0, swayPhase: 0, visible: true, look: ENC[0].monster.look };
   // plate: the answer text shown under a part; rect: where that text sits right now (pressing it aims at the part)
   const pods = KEYS.map((key, i) => ({ key, i, side: POD_AT[key].side, ox: POD_AT[key].side * spread(), oy: POD_AT[key].oy, x: 0, y: 0, r: 37, state: 'idle', grow: 0, flash: 0, plate: null, rect: null }));
   const podOf = key => pods[KEYS.indexOf(key)];
@@ -211,9 +218,6 @@
     mouse: { x: W / 2, y: 340, down: false, inside: false },
     touchAim: null,             // { id, x, y }
     stick: null,                // { id, ox, oy, dx, dy }
-    autoKey: null,              // part held with 1 / 2 / 3
-    rowKey: null, rowPointer: null,   // part held through an answer row of the card (narrow screens)
-    rowPress: null,                    // pending touch on an answer row
     space: false,
     lastType: 'mouse',
     commitSeq: -1, commitKey: null,   // which part the current trigger press may answer with
@@ -234,7 +238,7 @@
     for (const p of pods) {
       if (p.state === 'gone' || p.grow < 0.6) continue;
       let d = Math.hypot(x - p.x, y - p.y);
-      const r = p.rect;   // pressing the answer text counts as aiming at its part
+      const r = S.phase === 'break' ? null : p.rect;   // while answering, the answer text counts as its part; breaking needs the part itself
       if (r && x >= r.x - 4 && x <= r.x + r.w + 4 && y >= r.y - 4 && y <= r.y + r.h + 4) d = Math.min(d, p.r * 0.5);
       if (d < p.r * 1.22 * reach && d < bestD) { bestD = d; best = p.key; }
     }
@@ -258,7 +262,6 @@
   }
 
   function setPhase(name) {
-    cancelRowPress();
     S.phase = name; S.phaseT = 0;
   }
 
@@ -324,14 +327,14 @@
   }
 
   function startEncounter(index, note) {
-    S.ei = index; S.si = 0; S.cleared = 0; S.koT = 0; S.lastLoss = null;
+    S.ei = index; S.si = 0; S.cleared = 0; S.koT = 0; S.lastLoss = null; S.attemptT = 0; S.faster = 0;
     if (S.hearts <= 0) S.hearts = CFG.maxHearts;   // e.g. skipping from the out-of-hearts screen
     S.locked = null; S.armor = 1; S.stepWrong = 0; S.feedback = null; S.lastHint = null; S.hpShown = enc().steps.length;
     bullets = []; orbs = []; zaps = [];
-    Object.assign(monster, { x: W / 2, y: -260, homeY: null, t: 0, hurt: 0, roar: 0.9, lunge: 0, jx: 0, jy: 0, sway: 0, swayPhase: 0, visible: true, look: enc().monster.look });
+    Object.assign(monster, { x: W / 2, y: -260, homeY: null, swayX: 0, t: 0, hurt: 0, roar: 0.9, lunge: 0, jx: 0, jy: 0, sway: 0, swayPhase: 0, visible: true, look: enc().monster.look });
     for (const p of pods) { p.state = 'idle'; p.grow = 0; p.flash = 0; }
     setLabels();
-    Object.assign(player, { x: W / 2, y: 495, stun: 0, inv: 0, kx: 0, ky: 0 });
+    Object.assign(player, { camX: 0, camZ: 0, stun: 0, inv: 0, kx: 0 });
     S.banner = { text: enc().monster.boss ? 'BOSS' : `MONSTER ${index + 1} / ${ENC.length}`, sub: note || enc().monster.name.en, t: 0, dur: note ? 2.4 : 1.7 };
     setScreen('play'); setPhase('enter'); renderCard();
     renderHistory();
@@ -382,7 +385,7 @@
     $('rv-stars').innerHTML = starsHtml(st.stars);
     $('rv-title').innerHTML = bi(e.method.title);
     $('rv-steps').innerHTML = e.steps.map(s => `<li>${bi(s.explanation)}</li>`).join('');
-    $('rv-answer').textContent = `On the real test this is choice (${e.answer}).`;
+    $('rv-answer').textContent = `On the real test this is choice (${e.answer}). · Time on this question ${clock(st.time)}`;
     $('rv-link').href = e.url;
     $('btn-next').textContent = nextProblem(S.ei) === null ? 'See results →' : 'Next monster →';
     setScreen('review'); renderCard(); sfx.win();
@@ -423,7 +426,7 @@
         return `<li>${tag}<div><b>${esc(e.monster.name.en)}</b><small>${src}</small></div></li>`;
       }
       const missed = s.firstTry.map((ok, j) => (ok === false ? `Step ${j + 1}` : '')).filter(Boolean);
-      const hits = s.hits ? ` · hit by ${s.hits} orb${s.hits > 1 ? 's' : ''}` : '';
+      const hits = ` · ${clock(s.time)}` + (s.hits ? ` · hit by ${s.hits} orb${s.hits > 1 ? 's' : ''}` : '');
       const note = missed.length ? `<small class="miss">${src} · review ${missed.join(', ')}${hits}</small>` : `<small>${src} · every step right first time${hits}</small>`;
       return `<li><span class="stars stars--sm">${starsHtml(s.stars)}</span><div><b>${bi(e.method.title)}</b>${note}</div></li>`;
     }).join('');
@@ -510,7 +513,7 @@
   function hitPlayer(o) {
     S.hearts = Math.max(0, S.hearts - 1); S.stats[S.ei].hits++; S.lastLoss = 'hit';
     player.stun = 0.2; player.inv = CFG.hitInvincible;
-    player.kx = o.vx * 1.4; player.ky = o.vy * 1.4;
+    player.kx = (player.camX >= o.wx0 ? 1 : -1) * 520;   // knocked aside
     S.shake = Math.max(S.shake, 12); S.redFlash = Math.max(S.redFlash, 0.8);
     addFloat(player.x, player.y - 52 * actor(), '−1 ♥', '#fca5a5', 24);
     burst(o.x, o.y, o.col, 12, 220); burst(player.x, player.y - 6, '#f87171', 12, 220);
@@ -521,25 +524,9 @@
   /* Where the blaster points, whether it is firing, and which part (if any) is under the aim.
      `present` is false when no pointer is actually on the arena, so nothing lights up by accident. */
   function rawAim() {
-    const held = input.rowKey || input.autoKey;
-    if (held) {
-      const p = podOf(held);
-      if (p.state !== 'gone' && p.grow > 0.6) return { x: p.x, y: p.y, firing: true, key: held, present: true };
-    }
     if (input.touchAim) { const a = input.touchAim; return { x: a.x, y: a.y, firing: true, key: podAt(a.x, a.y, 1.3), present: true }; }
     const m = input.mouse, firing = m.down || input.space;
     return { x: m.x, y: m.y, firing, key: podAt(m.x, m.y, 1), present: firing || (m.inside && input.lastType === 'mouse') };
-  }
-
-  function resolveAim() {
-    const aim = rawAim();
-    // Once the right part is found the blaster locks onto it: holding fire is enough,
-    // so the break phase is about dodging, not about chasing a swaying target.
-    if (S.screen === 'play' && S.phase === 'break' && aim.firing) {
-      const p = podOf(S.locked);
-      return { x: p.x, y: p.y, firing: true, key: S.locked, present: true };
-    }
-    return aim;
   }
 
   /* A trigger press may answer with exactly one part: the one under the aim when the press began.
@@ -549,36 +536,49 @@
     input.commitKey = key;
   }
 
+  /* The blaster held at the bottom right of the screen, turned toward the crosshair. */
+  const gunScale = () => (view.stacked ? 1.15 : 1.7);   // the blaster is drawn this much larger than its sketch (smaller on phones)
+  function gunPose() {
+    const pl = player, bx = W / 2 + Math.min(W * 0.2, 280), by = H + 46;
+    const bob = pl.moving ? Math.sin(pl.bob * 9) : 0;
+    return { x: bx + bob * 9, y: by + Math.abs(bob) * 6 + pl.recoil * 14, ang: Math.atan2(pl.aimY - by, pl.aimX - bx) };
+  }
+  function muzzle() {
+    const g = gunPose(), len = (176 - player.recoil * 14) * gunScale();
+    return { x: g.x + Math.cos(g.ang) * len, y: g.y + Math.sin(g.ang) * len };
+  }
+
+  /* Shots are instant and land exactly on the crosshair: there is no homing and no lock-on. */
   function fire(aim) {
-    const pl = player, A = actor(), px = pl.x + 10 * A, py = pl.y - 6 * A;
+    const pl = player;
     pl.fireCd = 1 / CFG.fireRate; pl.recoil = 1; pl.flash = 1;
     const key = canTarget() && aim.key ? aim.key : null;
     const commit = !!key && S.phase === 'think' && input.commitSeq === S.thinkSeq && input.commitKey === key;
-    bullets.push({
-      x: px + Math.cos(pl.aim) * 38 * A, y: py + Math.sin(pl.aim) * 38 * A,
-      vx: Math.cos(pl.aim) * CFG.bulletSpeed, vy: Math.sin(pl.aim) * CFG.bulletSpeed,
-      key, commit, life: 1.4, dead: false,
-    });
+    const m = muzzle();
+    bullets.push({ x0: m.x, y0: m.y, x: aim.x, y: aim.y, t: 0 });   // a tracer from the blaster to the crosshair
     sfx.shoot();
+    if (key) { hitPod({ x: aim.x, y: aim.y, commit }, podOf(key)); return; }
+    const mo = monster, s = mo.look.size * actor() * zoom();
+    if (mo.visible && S.screen === 'play' && Math.hypot((aim.x - mo.x) / (96 * s), (aim.y - mo.y) / (82 * s)) < 1) tink(aim.x, aim.y);
   }
 
   function updatePlayer(dt) {
-    const pl = player;
-    let mx = 0, my = 0;
-    for (const k of input.keys) { const v = MOVE_KEY[k]; if (v) { mx += v[0]; my += v[1]; } }
-    if (input.stick) { mx += input.stick.dx; my += input.stick.dy; }
-    const mag = Math.hypot(mx, my);
-    if (mag > 1) { mx /= mag; my /= mag; }
-    const speed = CFG.playerSpeed * (pl.stun > 0 ? 0.35 : 1);
-    pl.x = clamp(pl.x + (mx * speed + pl.kx) * dt, CFG.zone.left, zoneRight());
-    pl.y = clamp(pl.y + (my * speed + pl.ky) * dt, CFG.zone.top, CFG.zone.bottom);
-    const damp = Math.pow(0.002, dt); pl.kx *= damp; pl.ky *= damp;
-    pl.moving = mag > 0.05; if (pl.moving) pl.walkT += dt;
+    const pl = player, C = CFG.cam;
+    let mx = 0, mz = 0;
+    for (const k of input.keys) { const v = MOVE_KEY[k]; if (v) { mx += v[0]; mz -= v[1]; } }   // W / up steps forward
+    if (input.stick) { mx += input.stick.dx; mz -= input.stick.dy; }
+    mx = clamp(mx, -1, 1); mz = clamp(mz, -1, 1);
+    const slow = pl.stun > 0 ? 0.35 : 1;
+    pl.camX = clamp(pl.camX + (mx * C.speedX * slow + pl.kx) * dt, -C.maxX, C.maxX);
+    pl.camZ = clamp(pl.camZ + mz * C.speedZ * slow * dt, 0, C.maxZ);
+    pl.kx *= Math.pow(0.002, dt);
+    pl.moving = Math.abs(mx) + Math.abs(mz) > 0.05; if (pl.moving) pl.bob += dt;
+    pl.x = W / 2; pl.y = H - 70;
     pl.stun = Math.max(0, pl.stun - dt); pl.inv = Math.max(0, pl.inv - dt); pl.fireCd = Math.max(0, pl.fireCd - dt);
     pl.recoil = Math.max(0, pl.recoil - dt * 9); pl.flash = Math.max(0, pl.flash - dt * 12);
 
-    const aim = resolveAim(), A = actor(), px = pl.x + 10 * A, py = pl.y - 6 * A;
-    if (Math.hypot(aim.x - px, aim.y - py) > 26 * A) pl.aim = Math.atan2(aim.y - py, aim.x - px);
+    const aim = rawAim();
+    if (aim.present) { pl.aimX = aim.x; pl.aimY = aim.y; }
 
     const hover = canTarget() && aim.present && aim.key && targetable(podOf(aim.key)) ? aim.key : null;
     if (hover !== S.hoverKey) { S.hoverKey = hover; syncHover(); }
@@ -606,12 +606,13 @@
     m.homeY = m.homeY === null ? base : lerp(m.homeY, base, 1 - Math.pow(0.02, dt));
     const homeY = m.homeY + (m.look.size - 1) * 60;   // bigger monsters hover a little lower
     if (S.screen === 'play' && S.phase === 'enter') {
-      m.x = W / 2; m.y = lerp(-260, homeY, easeOut(clamp(S.phaseT / 1.2, 0, 1)));
+      m.x = W / 2 - player.camX * zoom(); m.y = lerp(-260, homeY, easeOut(clamp(S.phaseT / 1.2, 0, 1)));
     } else {
       const breaking = S.screen === 'play' && S.phase === 'break';
-      m.sway = lerp(m.sway, breaking ? 128 : 24, 1 - Math.pow(0.05, dt));
+      m.sway = lerp(m.sway, breaking ? LEVELS[level].sway : 24, 1 - Math.pow(0.05, dt));
       m.swayPhase += dt * (breaking ? 1.25 : 0.6);
-      m.x = lerp(m.x, W / 2 + Math.sin(m.swayPhase) * m.sway, 1 - Math.pow(0.001, dt));
+      m.swayX = lerp(m.swayX, Math.sin(m.swayPhase) * m.sway, 1 - Math.pow(0.001, dt));
+      m.x = W / 2 + (m.swayX - player.camX) * zoom();   // the world shifts as the student strafes
       const recoil = S.screen === 'play' && S.phase === 'stepClear' ? Math.sin(clamp(S.phaseT / 0.5, 0, 1) * Math.PI) * 26 : 0;
       m.y = homeY + Math.sin(m.t * 1.6) * 6 + Math.sin(m.lunge * Math.PI) * 30 - recoil;
     }
@@ -619,9 +620,11 @@
     m.jx = dying ? rand(-6, 6) : 0; m.jy = dying ? rand(-6, 6) : 0;
 
     const sprouting = !(S.screen === 'play' && S.phase === 'enter' && S.phaseT < 0.9);
+    const z = zoom();
     for (const p of pods) {
-      p.x = m.x + m.jx + p.ox + Math.cos(m.t * 1.3 + p.i * 2) * 4;
-      p.y = m.y + m.jy + p.oy * A + Math.sin(m.t * 2.1 + p.i * 2) * 5;
+      p.r = 37 * A * z;
+      p.x = m.x + m.jx + p.ox * z + Math.cos(m.t * 1.3 + p.i * 2) * 4;
+      p.y = m.y + m.jy + p.oy * A * z + Math.sin(m.t * 2.1 + p.i * 2) * 5;
       if (p.state === 'retract') p.grow = Math.max(0, p.grow - dt * 3.2);
       else if (p.state !== 'gone' && sprouting) p.grow = Math.min(1, p.grow + dt * 2.6);
       p.flash = Math.max(0, p.flash - dt * 3);
@@ -644,44 +647,25 @@
     tink(b.x, b.y);
   }
 
-  function updateBullets(dt) {
-    const m = monster, bodyR = 80 * m.look.size * actor();
-    for (const b of bullets) {
-      b.life -= dt;
-      if (b.key) {
-        const p = podOf(b.key);
-        if (p.state === 'gone' || p.grow < 0.3) b.key = null;
-        else {
-          const dx = p.x - b.x, dy = p.y - b.y, d = Math.hypot(dx, dy) || 1;
-          if (d <= CFG.bulletSpeed * dt + p.r * 0.55) {
-            b.x = p.x - dx / d * p.r * 0.7; b.y = p.y - dy / d * p.r * 0.7;
-            hitPod(b, p); b.dead = true; continue;
-          }
-          b.vx = dx / d * CFG.bulletSpeed; b.vy = dy / d * CFG.bulletSpeed;   // steer so an aimed shot never misses
-        }
-      }
-      b.x += b.vx * dt; b.y += b.vy * dt;
-      if (!b.key && m.visible) {
-        let blocked = Math.hypot(b.x - m.x, b.y - m.y) < bodyR;
-        if (!blocked) {
-          for (const p of pods) {
-            if (p.state !== 'gone' && p.grow > 0.6 && Math.hypot(b.x - p.x, b.y - p.y) < p.r) { blocked = true; p.flash = Math.max(p.flash, 0.25); break; }
-          }
-        }
-        if (blocked) { tink(b.x, b.y); b.dead = true; continue; }
-      }
-      if (b.life <= 0 || b.x < -30 || b.x > W + 30 || b.y < -view.top - 30 || b.y > H + 30) b.dead = true;
-    }
-    bullets = bullets.filter(b => !b.dead);
+  function updateBullets(dt) {   // shots are instant; only their tracers fade out
+    for (const b of bullets) b.t += dt;
+    bullets = bullets.filter(b => b.t < 0.09);
   }
 
   const orbRamp = () => 1 + CFG.orbRamp * S.ei / Math.max(1, ENC.length - 1);   // later monsters fire a little harder
 
+  /* An orb is aimed at where the student stands when it is fired. It flies toward the camera, growing,
+     and hits only if the student is still within CFG.hitRadius of that spot when it arrives. */
   function fireOrb(x, y, col) {
-    const v = LEVELS[level].speed * orbRamp();
-    const d = Math.hypot(player.x - x, player.y - y) || 1;
-    orbs.push({ x, y, vx: (player.x - x) / d * v, vy: (player.y - y) / d * v, r: 11, col, t: 0, dead: false });
+    const wx0 = player.camX + (x - W / 2) / zoom();
+    orbs.push({ wx0, tx: player.camX, sy0: y, p: 0, dur: LEVELS[level].travel / orbRamp(), x, y, r: 11, col, t: 0, dead: false });
     sfx.orb();
+  }
+
+  /* Seconds between orbs: the level's starting gap, 0.1 s shorter for every 10 s on this question, never below the floor. */
+  function orbGap(base) {
+    const L = LEVELS[level];
+    return Math.max(L.floor, base - CFG.escalateBy * S.faster) / orbRamp();
   }
 
   /* The monster attacks from the start: from its mouth while the student thinks,
@@ -698,18 +682,24 @@
             const p = shooters[S.orbTurn++ % shooters.length];
             fireOrb(p.x, p.y, p.state === 'sealed' ? '#f87171' : KEY_COLOR[p.key]); p.flash = 0.8;
           }
-          S.orbTimer = L.brk / orbRamp();
+          S.orbTimer = orbGap(L.brk);
         } else {
           const m = monster, s = m.look.size * actor();
           fireOrb(m.x + m.jx, m.y + m.jy + 34 * s, m.look.body); m.roar = Math.max(m.roar, 0.55);
-          S.orbTimer = L.think / orbRamp();
+          S.orbTimer = orbGap(L.think);
         }
       }
     }
     for (const o of orbs) {
-      o.x += o.vx * dt; o.y += o.vy * dt; o.t += dt;
-      if (!debug.noOrbHits && player.inv <= 0 && S.hearts > 0 && Math.hypot(o.x - player.x, o.y - (player.y - 4 * actor())) < o.r + player.r - 2) { hitPlayer(o); o.dead = true; }
-      if (o.x < -30 || o.x > W + 30 || o.y < -view.top - 30 || o.y > H + 30) o.dead = true;
+      o.t += dt; o.p += dt / o.dur;
+      const k = Math.min(o.p, 1), f = zoom() / (1 - 0.82 * k);
+      o.x = W / 2 + (lerp(o.wx0, o.tx, k) - player.camX) * f;
+      o.y = lerp(o.sy0, H - 60, Math.pow(k, 1.6));
+      o.r = Math.min(70, 11 * (1 + k) * f / zoom());
+      if (o.p >= 1) {
+        if (!debug.noOrbHits && player.inv <= 0 && S.hearts > 0 && Math.abs(o.tx - player.camX) < CFG.hitRadius) hitPlayer(o);
+        o.dead = true;
+      }
     }
     orbs = orbs.filter(o => !o.dead);
   }
@@ -736,6 +726,15 @@
 
     S.phaseT += dt;
     updatePlayer(dt); updateMonster(dt); updateBullets(dt); updateOrbs(dt);
+    if (S.phase !== 'dying') {   // the clock runs while the monster is alive
+      S.stats[S.ei].time += dt; S.attemptT += dt;
+      const faster = Math.floor(S.attemptT / CFG.escalateEvery);
+      if (faster > S.faster) {
+        S.faster = faster;
+        addFloat(monster.x, monster.y - 120 * actor() * zoom(), showZh ? MSG.faster.zh : MSG.faster.en, '#fb923c', 22);
+        sfx.roar();
+      }
+    }
     if (S.hearts <= 0) {   // out of hearts: a short beat to see the last hit, then the retry screen
       S.koT += dt;
       if (S.koT >= 0.7) { knockOut(); return; }
@@ -803,9 +802,10 @@
     ctx.fillStyle = sky; ctx.fillRect(-20, -top - 20, W + 40, H + top + 40);
 
     ctx.fillStyle = '#c7d2fe';
+    const far = player.camX * 0.15;   // distant stars drift a little as the student strafes
     for (const s of stars) {
       ctx.globalAlpha = 0.25 + 0.55 * Math.abs(Math.sin(S.time * s.tw + s.ph));
-      ctx.fillRect(s.fx * W, -top + s.fy * (top + HORIZON - 12), s.s, s.s);
+      ctx.fillRect(((s.fx * W - far) % W + W) % W, -top + s.fy * (top + HORIZON - 12), s.s, s.s);
     }
     ctx.globalAlpha = 1;
 
@@ -817,12 +817,9 @@
     ctx.beginPath();
     const scroll = (S.time * 0.35) % 1;
     for (let i = 0; i < 11; i++) { const k = (i + scroll) / 11, y = HORIZON + (H - HORIZON) * k * k; ctx.moveTo(-20, y); ctx.lineTo(W + 20, y); }
-    for (let i = -14; i <= 14; i++) { ctx.moveTo(W / 2 + i * 28, HORIZON); ctx.lineTo(W / 2 + i * 150, H + 20); }
+    const near = player.camX * zoom();   // floor lines slide as the student strafes
+    for (let i = -18; i <= 18; i++) { ctx.moveTo(W / 2 + i * 28 - near * 0.18, HORIZON); ctx.lineTo(W / 2 + i * 150 - near * 1.2, H + 20); }
     ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(253,224,71,0.14)'; ctx.setLineDash([10, 12]);
-    ctx.beginPath(); ctx.moveTo(20, CFG.zone.top - 34); ctx.lineTo(W - 20, CFG.zone.top - 34); ctx.stroke();
-    ctx.setLineDash([]);
   }
 
   function drawHorns(lk) {
@@ -855,7 +852,7 @@
   function drawMonster() {
     const m = monster;
     if (!m.visible) return;
-    const lk = m.look, s = lk.size * actor(), cx = m.x + m.jx, cy = m.y + m.jy;
+    const lk = m.look, s = lk.size * actor() * zoom(), cx = m.x + m.jx, cy = m.y + m.jy;
 
     const near = clamp((cy + 160) / (CFG.monsterY + 160), 0, 1);   // the shadow grows as the monster flies in
     ctx.fillStyle = `rgba(0,0,0,${0.24 * near})`;
@@ -985,56 +982,41 @@
     }
   }
 
+  /* First person: no character on screen, just the student's blaster at the bottom right. */
   function drawPlayer() {
-    const pl = player, A = actor();
+    if (S.screen !== 'play' && S.screen !== 'down') return;
+    const pl = player, g = gunPose(), k = pl.recoil * 14;
     ctx.save();
-    ctx.translate(pl.x, pl.y); ctx.scale(A, A);
-    if (pl.inv > 0 && Math.floor(S.time * 16) % 2 === 0) ctx.globalAlpha = 0.4;
-
-    ctx.fillStyle = 'rgba(0,0,0,0.38)';
-    ctx.beginPath(); ctx.ellipse(0, 25, 21, 7, 0, 0, TAU); ctx.fill();
-
-    const sw = pl.moving ? Math.sin(pl.walkT * 15) * 4 : 0;
-    ctx.fillStyle = '#1e3a8a'; roundRect(-12, 9 + sw, 10, 14, 4); ctx.fill(); roundRect(2, 9 - sw, 10, 14, 4); ctx.fill();
-    ctx.fillStyle = '#f8fafc'; roundRect(-13, 20 + sw, 12, 6, 3); ctx.fill(); roundRect(1, 20 - sw, 12, 6, 3); ctx.fill();
-
-    ctx.fillStyle = pl.stun > 0 ? '#7c3aed' : '#14b8a6'; roundRect(-16, -15, 32, 29, 10); ctx.fill();
-    ctx.fillStyle = '#0d9488'; roundRect(-21, -11, 8, 19, 4); ctx.fill();
-    ctx.fillStyle = '#f59e0b'; roundRect(-10, -11, 20, 22, 6); ctx.fill();
-    ctx.fillStyle = '#b45309'; roundRect(-6, 1, 12, 6, 3); ctx.fill();
-
-    ctx.save();
-    ctx.translate(10, -6); ctx.rotate(pl.aim);
-    const k = pl.recoil * 5;
-    ctx.fillStyle = '#0d9488'; roundRect(-3 - k, -4.5, 16, 9, 4.5); ctx.fill();
-    ctx.fillStyle = '#e2e8f0'; roundRect(9 - k, -5.5, 25, 11, 3); ctx.fill();
-    ctx.fillStyle = '#38bdf8'; roundRect(13 - k, -2.5, 13, 5, 2.5); ctx.fill();
-    ctx.fillStyle = '#475569'; roundRect(32 - k, -4, 6, 8, 2); ctx.fill();
-    if (pl.flash > 0) { ctx.fillStyle = `rgba(186,230,253,${pl.flash})`; ctx.beginPath(); ctx.arc(43, 0, 5 + pl.flash * 7, 0, TAU); ctx.fill(); }
-    ctx.restore();
-
-    // head seen from behind: ears, hair, cap
-    ctx.fillStyle = '#fcd9b6'; ctx.beginPath(); ctx.arc(-11.5, -23, 3.5, 0, TAU); ctx.arc(11.5, -23, 3.5, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#3f2d20'; ctx.beginPath(); ctx.arc(0, -25, 12, 0, TAU); ctx.fill();
-    ctx.fillStyle = '#ef4444'; ctx.beginPath(); ctx.arc(0, -27, 12.5, Math.PI, TAU); ctx.closePath(); ctx.fill();
-    roundRect(-12.5, -29.5, 25, 5, 2.5); ctx.fill();
-    ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -39.5, 3, 0, TAU); ctx.fill();
-
-    if (pl.stun > 0) {
-      ctx.globalAlpha = 1; ctx.fillStyle = '#fde047';
-      for (let i = 0; i < 3; i++) { const a = S.time * 7 + i * TAU / 3; starPath(Math.cos(a) * 17, -50 + Math.sin(a) * 6, 5); ctx.fill(); }
+    ctx.translate(g.x, g.y); ctx.rotate(g.ang); ctx.scale(gunScale(), gunScale());
+    ctx.fillStyle = '#0f766e'; roundRect(-90 - k, -40, 104, 80, 26); ctx.fill();            // sleeve
+    ctx.fillStyle = '#fcd9b6'; roundRect(-6 - k, -26, 46, 52, 18); ctx.fill();              // hand
+    ctx.fillStyle = '#cbd5e1'; roundRect(20 - k, -22, 128, 44, 13); ctx.fill();             // blaster body
+    ctx.fillStyle = '#94a3b8'; roundRect(20 - k, 8, 128, 14, 7); ctx.fill();
+    ctx.fillStyle = '#38bdf8'; roundRect(48 - k, -10, 70, 13, 6.5); ctx.fill();              // energy cell
+    ctx.fillStyle = '#334155'; roundRect(144 - k, -15, 26, 30, 7); ctx.fill();              // muzzle
+    if (pl.flash > 0) {
+      ctx.fillStyle = `rgba(186,230,253,${pl.flash})`;
+      ctx.beginPath(); ctx.arc(176 - k, 0, 8 + pl.flash * 12, 0, TAU); ctx.fill();
     }
     ctx.restore();
+    if (pl.inv > 0 && Math.floor(S.time * 10) % 2 === 0) {   // a red rim while safe after a hit
+      ctx.strokeStyle = 'rgba(248,113,113,0.45)'; ctx.lineWidth = 18;
+      ctx.strokeRect(9, -view.top + 9, W - 18, H + view.top - 18);
+    }
+    if (pl.stun > 0) { ctx.fillStyle = 'rgba(248,113,113,0.12)'; ctx.fillRect(0, -view.top, W, H + view.top); }
   }
 
-  function drawBullets() {
+  function drawBullets() {   // tracers from the blaster to where the shot landed
     ctx.lineCap = 'round';
     for (const b of bullets) {
-      const v = Math.hypot(b.vx, b.vy) || 1, tx = b.x - b.vx / v * 20, ty = b.y - b.vy / v * 20;
-      ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = 'rgba(56,189,248,0.45)'; ctx.lineWidth = 7; ctx.stroke();
-      ctx.strokeStyle = '#f0f9ff'; ctx.lineWidth = 3; ctx.stroke();
+      const a = 1 - b.t / 0.09;
+      ctx.globalAlpha = Math.max(0, a);
+      ctx.beginPath(); ctx.moveTo(b.x0, b.y0); ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = 'rgba(56,189,248,0.5)'; ctx.lineWidth = 7; ctx.stroke();
+      ctx.strokeStyle = '#f0f9ff'; ctx.lineWidth = 2.5; ctx.stroke();
+      ctx.beginPath(); ctx.arc(b.x, b.y, 5, 0, TAU); ctx.fillStyle = '#f0f9ff'; ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
 
   function drawOrbs() {
@@ -1123,6 +1105,8 @@
     ctx.textBaseline = 'middle'; ctx.textAlign = 'right'; ctx.font = `700 17px ${FONT}`;
     ctx.fillStyle = '#e8eeff'; ctx.fillText(String(S.score).padStart(4, '0'), W - 24, 29);
     ctx.fillStyle = '#fde047'; ctx.fillText(`★ ${totalStars()}`, W - 92, 29);
+    ctx.font = `700 14px ${FONT}`; ctx.fillStyle = '#cbd5e1';
+    ctx.fillText(`⏱ ${clock(S.stats[S.ei].time)}`, W - 24, 52);
   }
 
   function drawStatus() {
@@ -1148,8 +1132,9 @@
   }
 
   function drawCrosshair() {
-    if (S.screen !== 'play' || input.lastType !== 'mouse' || !input.mouse.inside || input.autoKey || input.rowKey) return;
-    const { x, y } = input.mouse, col = S.hoverKey ? KEY_COLOR[S.hoverKey] : '#e2e8f0';
+    const at = input.touchAim || (input.lastType === 'mouse' && input.mouse.inside ? input.mouse : null);
+    if (S.screen !== 'play' || !at) return;
+    const { x, y } = at, col = S.hoverKey ? KEY_COLOR[S.hoverKey] : '#e2e8f0';
     const shape = () => {
       ctx.beginPath(); ctx.arc(x, y, 12, 0, TAU);
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) { ctx.moveTo(x + dx * 7, y + dy * 7); ctx.lineTo(x + dx * 19, y + dy * 19); }
@@ -1174,7 +1159,7 @@
     drawMonster();
     for (const p of pods) drawPod(p);
     for (const p of pods) drawPlate(p);
-    drawOrbs(); drawBullets(); drawPlayer(); drawZaps(); drawParticles(); drawFloats();
+    drawBullets(); drawZaps(); drawParticles(); drawOrbs(); drawPlayer(); drawFloats();
     ctx.restore();
     if (S.redFlash > 0) { ctx.fillStyle = `rgba(248,113,113,${S.redFlash * 0.3})`; ctx.fillRect(0, -top, W, H + top); }
     drawBanner(); drawStatus(); drawStick(); drawCrosshair();
@@ -1289,7 +1274,7 @@
       el.prompt.innerHTML = bi(st.prompt);
       el.options.innerHTML = KEYS.map(key => {
         const cls = podOf(key).state === 'sealed' ? ' is-sealed' : S.locked === key ? ' is-locked' : '';
-        return `<li class="opt${cls}" data-k="${key}" title="Hold to fire at part ${key}"><b class="opt-key">${key}</b><span class="opt-text">${bi(st.options[key].text)}</span><i class="opt-mark"></i></li>`;
+        return `<li class="opt${cls}" data-k="${key}"><b class="opt-key">${key}</b><span class="opt-text">${bi(st.options[key].text)}</span><i class="opt-mark"></i></li>`;
       }).join('');
     }
 
@@ -1302,16 +1287,9 @@
   }
 
   // ================================================================ input
-  function cancelRowPress() {
-    if (!input.rowPress) return;
-    clearTimeout(input.rowPress.timer);
-    input.rowPress = null;
-  }
-
   function clearInput() {
-    cancelRowPress();
     input.keys.clear(); input.mouse.down = false; input.touchAim = null; input.stick = null;
-    input.autoKey = null; input.rowKey = null; input.rowPointer = null; input.space = false;
+    input.space = false;
   }
 
   function toLogical(e) {
@@ -1324,16 +1302,14 @@
     if (e.target instanceof Node && el.history.contains(e.target)) return;
     const k = e.key.toLowerCase();
     if (k === ' ' && e.target instanceof HTMLButtonElement) return;
-    if (MOVE_KEY[k] || FIRE_KEY[k] || k === ' ') e.preventDefault();
+    if (MOVE_KEY[k] || k === ' ') e.preventDefault();
     if (e.repeat) return;
     if (MOVE_KEY[k]) input.keys.add(k);
-    if (FIRE_KEY[k]) { input.autoKey = FIRE_KEY[k]; triggerPress(FIRE_KEY[k]); }
     if (k === ' ') { input.space = true; triggerPress(podAt(input.mouse.x, input.mouse.y, 1)); }
   });
   window.addEventListener('keyup', e => {
     const k = e.key.toLowerCase();
     input.keys.delete(k);
-    if (FIRE_KEY[k] && input.autoKey === FIRE_KEY[k]) input.autoKey = null;
     if (k === ' ') input.space = false;
   });
   window.addEventListener('blur', clearInput);
@@ -1369,48 +1345,12 @@
     if (e.pointerType === 'mouse') input.mouse.down = false;
     if (input.stick && input.stick.id === e.pointerId) input.stick = null;
     if (input.touchAim && input.touchAim.id === e.pointerId) input.touchAim = null;
-    if (input.rowPress?.id === e.pointerId) cancelRowPress();
-    if (input.rowPointer === e.pointerId) { input.rowKey = null; input.rowPointer = null; }
   };
   window.addEventListener('pointerup', releasePointer);
   window.addEventListener('pointercancel', releasePointer);
   el.canvas.addEventListener('pointerleave', e => { if (e.pointerType === 'mouse') input.mouse.inside = false; });
   el.canvas.addEventListener('contextmenu', e => e.preventDefault());
 
-  // narrow screens: holding an answer row of the card fires at that part
-  function fireFromRow(key, pointerId) {
-    audio.ensure();
-    input.rowKey = key; input.rowPointer = pointerId;
-    triggerPress(key);
-  }
-
-  el.options.addEventListener('pointerdown', e => {
-    const li = e.target.closest('.opt');
-    if (!li || S.screen !== 'play' || (e.pointerType === 'mouse' && e.button !== 0)) return;
-    if (input.rowPress || input.rowPointer !== null) return;
-    const key = li.dataset.k;
-    if (e.pointerType === 'mouse') {
-      e.preventDefault();
-      fireFromRow(key, e.pointerId);
-      return;
-    }
-    if (!canTarget()) return;
-
-    // Let the browser claim a vertical swipe before committing an answer.
-    const press = { id: e.pointerId, x: e.clientX, y: e.clientY, distance: 0, timer: null };
-    input.rowPress = press;
-    press.timer = setTimeout(() => {
-      input.rowPress = null;
-      if (view.stacked) fireFromRow(key, press.id);
-    }, CFG.rowHoldMs);
-  });
-  window.addEventListener('pointermove', e => {
-    const press = input.rowPress;
-    if (press?.id !== e.pointerId) return;
-    press.distance += Math.hypot(e.clientX - press.x, e.clientY - press.y);
-    press.x = e.clientX; press.y = e.clientY;
-    if (press.distance >= CFG.rowMoveLimit) cancelRowPress();
-  });
   el.options.addEventListener('pointerover', e => { const li = e.target.closest('.opt'); S.panelHover = li ? li.dataset.k : null; });
   el.options.addEventListener('pointerleave', () => { S.panelHover = null; });
   el.options.addEventListener('contextmenu', e => e.preventDefault());
@@ -1545,9 +1485,7 @@
     el.stage.style.setProperty('--u', scale.toFixed(4));
     view.scale = w / W; view.dpr = Math.min(window.devicePixelRatio || 1, 2);
     el.canvas.width = Math.round(w * view.dpr); el.canvas.height = Math.round(h * view.dpr);
-    player.x = clamp(player.x, CFG.zone.left, zoneRight());
-    player.r = 17 * actor();
-    for (const p of pods) { p.ox = p.side * spread(); p.r = 37 * actor(); }
+    for (const p of pods) p.ox = p.side * spread();
     if (S.screen === 'play' || S.screen === 'down') setLabels();   // the answer text wraps to the new spacing
     measureCard();
     render();

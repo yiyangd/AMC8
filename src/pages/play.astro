@@ -248,10 +248,10 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       <div class="scene" id="scene">
         <canvas id="arena" aria-label="Game arena"></canvas>
         <div class="legend" id="legend" aria-hidden="true">
-          <span>Move</span><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>
+          <span>Strafe</span><span><kbd>A</kbd><kbd>D</kbd></span>
+          <span>Step</span><span><kbd>W</kbd><kbd>S</kbd></span>
           <span>Aim</span><span><kbd>Mouse</kbd></span>
-          <span>Fire</span><span><kbd>Hold click</kbd></span>
-          <span>Keys only</span><span>hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd></span>
+          <span>Fire</span><span><kbd>Hold click</kbd> <kbd>Space</kbd></span>
         </div>
         <div class="history-slot" id="history-slot">
           <aside class="run-history" id="run-history" aria-labelledby="run-history-title">
@@ -314,7 +314,7 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
         <div class="card">
           <p class="kicker" style="color: var(--bad)">Out of hearts</p>
           <h2>The monster won this round<span class="zh" lang="zh">这一轮怪兽赢了</span></h2>
-          <p class="lead">Wrong parts and orb hits both cost a heart. Keep moving while you think, then fire.<span class="zh" lang="zh">打错部位和被能量球打中都会掉一颗心。一边想一边移动，再开火。</span></p>
+          <p class="lead">Wrong parts and orb hits both cost a heart. Strafe while you think, then aim and fire.<span class="zh" lang="zh">打错部位和被能量球打中都会掉一颗心。一边想一边移动，再开火。</span></p>
           <div class="hintbox" id="dn-hint"></div>
           <p class="levels-label">Difficulty · 难度</p>
           <div class="levels" data-levels role="radiogroup" aria-label="Difficulty"></div>
@@ -347,12 +347,12 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
       </div>
       <ol class="how">
         <li><div><b>Read the step</b><span class="en">The card above the monster shows the problem and one small question.</span><span class="zh" lang="zh">怪兽上方的卡片会显示题目和一个小问题。</span></div></li>
-        <li><div><b>Shoot the right part</b><span class="en">Each part carries one answer. Hold fire on the right part to break it.</span><span class="zh" lang="zh">每个部位对应一个选项。按住正确选项持续开火，击破部位。</span></div></li>
-        <li><div><b>Dodge while you think</b><span class="en">The monster fires orbs from the start. Every hit costs a heart, and so does a wrong part (you get a hint). Stuck? Skip the question, or pick another one from Question progress.</span><span class="zh" lang="zh">怪兽一开始就会发射能量球，被打中掉一颗心；打错部位也掉一颗心，并给出提示。不会做可以先跳过，或在“题目进度”里换一道题。</span></div></li>
+        <li><div><b>Aim at the right part</b><span class="en">Each part carries one answer. Put the crosshair on the right one and hold fire to break it. Shots land exactly where you aim, so keep the crosshair on it as it sways.</span><span class="zh" lang="zh">每个部位对应一个选项。把准星对准正确的部位，按住开火把它打碎。子弹打在准星的位置，部位晃动时要一直瞄准。</span></div></li>
+        <li><div><b>Dodge while you think</b><span class="en">The monster fires orbs from the start, and faster every 10 seconds. Strafe with A / D to dodge; W / S steps closer or back. Every hit costs a heart, and so does a wrong part (you get a hint). Stuck? Skip the question, or pick another one from Question progress.</span><span class="zh" lang="zh">怪兽一开始就会发射能量球，而且每过 10 秒就更快。用 A / D 左右移动躲避，W / S 前进或后退。被打中掉一颗心；打错部位也掉一颗心，并给出提示。不会做可以先跳过，或在“题目进度”里换一道题。</span></div></li>
       </ol>
       <p class="keys">
-        Move <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> or arrow keys · Aim with the mouse · Hold click to fire<br>
-        Keyboard only: hold <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> · Touch: drag the lower arena to move, hold a part or answer to fire
+        Strafe <kbd>A</kbd><kbd>D</kbd> or <kbd>←</kbd><kbd>→</kbd> · Step closer or back <kbd>W</kbd><kbd>S</kbd> · Aim with the mouse · Hold click or <kbd>Space</kbd> to fire<br>
+        Touch: drag the lower half to move · press and hold on a part to aim and fire
       </p>
       <div class="actions">
         <button type="button" class="chip" id="btn-zh-intro" aria-pressed="false" lang="zh">中文辅助</button>
@@ -392,6 +392,6 @@ const encodedData = JSON.stringify(shooterData).replace(/</g, '\\u003c');
 </div>
 
 <script is:inline id="shooter-data" type="application/json" set:html={encodedData}></script>
-<script is:inline src={url('game/monster-shooter-v9.js?v=7')}></script>
+<script is:inline src={url('game/monster-shooter-v9.js?v=10')}></script>
 </body>
 </html>
